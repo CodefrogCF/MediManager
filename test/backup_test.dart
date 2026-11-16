@@ -98,7 +98,16 @@ void main() {
       expect(preview.medicationCount, 1);
       expect(preview.eventCount, 3);
       await restored.restore(preview);
+      await restored.restore(preview);
       expect(await restored.export(), bytes);
+      final restoredPlans = await MedicationRepository(destination)
+          .watchPlans(id)
+          .first;
+      expect(restoredPlans.map((plan) => plan.schedule.logicalId), [
+        morning,
+        evening,
+      ]);
+      expect(restoredPlans.last.schedule.id, replacement);
       expect(
         await destination.select(destination.reminderOccurrences).get(),
         isEmpty,
@@ -179,7 +188,7 @@ void main() {
         fails(BackupProblem.tooLarge),
       );
       expect(
-        () => repository.inspect(_encode(envelope()..['version'] = 2)),
+        () => repository.inspect(_encode(envelope()..['version'] = 3)),
         fails(BackupProblem.unsupported),
       );
       expect(

@@ -21,7 +21,8 @@ internal data class ReminderPlan(
     val reminderMinute: Int?,
     val snoozeMinutes: Int,
     val changedAt: Instant,
-    val label: String? = null,
+    val label: String?,
+    val logicalId: Long,
 ) {
     fun occursOn(date: LocalDate): Boolean {
         val day = date.toEpochDay()
@@ -68,10 +69,12 @@ internal class ReminderStore(private val db: SQLiteDatabase) {
         }
     }
 
+    // Version 4 databases remain readable before the app runs its migration.
+    private val planIdentity = if (db.version == 4) "s.id" else "coalesce(s.plan_id, s.id)"
     private val planQuery = """
         SELECT s.id, m.name, s.starts_on, s.ends_before, s.recurrence,
                s.minutes_after_midnight, coalesce(r.reminder_minute, s.minutes_after_midnight),
-               r.snooze_minutes, r.changed_at, s.label
+               r.snooze_minutes, r.changed_at, s.label, $planIdentity
         FROM medication_schedules s
         JOIN medications m ON s.medication_id = m.id
         JOIN slot_reminders r ON r.schedule_id = s.id
@@ -94,6 +97,7 @@ internal class ReminderStore(private val db: SQLiteDatabase) {
         nullableLong(5)?.toInt(), nullableLong(6)?.toInt(), getInt(7),
         Instant.ofEpochMilli(getLong(8) / 1000),
         getString(9),
+        getLong(10),
     )
 
     fun latest(key: ReminderKey): LatestIntake = db.rawQuery(

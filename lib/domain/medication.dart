@@ -58,6 +58,7 @@ final class MedicationSchedule {
     required this.startsOn,
     required this.endsBefore,
     this.label,
+    this.planId,
   });
 
   final int id;
@@ -67,6 +68,10 @@ final class MedicationSchedule {
   final LocalDate startsOn;
   final LocalDate? endsBefore;
   final String? label;
+
+  /// Later versions refer to the original schedule for the same plan.
+  final int? planId;
+  int get logicalId => planId ?? id;
 
   bool occursOn(LocalDate date) {
     final end = endsBefore;

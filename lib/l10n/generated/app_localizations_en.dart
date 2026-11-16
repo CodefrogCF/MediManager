@@ -136,7 +136,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editSchedule => 'Edit plan';
 
   @override
-  String get noSchedules => 'No current or upcoming intake plans';
+  String get noSchedules => 'No editable intake plans';
+
+  @override
+  String get planChangesFrom => 'Changes apply from';
 
   @override
   String get stopSchedule => 'End plan';

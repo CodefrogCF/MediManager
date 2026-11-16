@@ -13,10 +13,16 @@ typedef ScheduleDraft = ({
 });
 
 class ScheduleEditor extends StatefulWidget {
-  const ScheduleEditor({required this.today, this.schedule, super.key});
+  const ScheduleEditor({
+    required this.today,
+    this.schedule,
+    this.previousEnd,
+    super.key,
+  });
 
   final LocalDate today;
   final MedicationSchedule? schedule;
+  final LocalDate? previousEnd;
 
   @override
   State<ScheduleEditor> createState() => _ScheduleEditorState();
@@ -100,7 +106,9 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
             ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(context.l10n.startDate),
+            title: Text(
+              _started ? context.l10n.planChangesFrom : context.l10n.startDate,
+            ),
             subtitle: Text(Labels.date(context, _start)),
             onTap: _started ? null : _pickStart,
           ),
@@ -171,7 +179,11 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
   }
 
   Future<void> _pickStart() async {
-    final selected = await _pickDate(widget.today, _start);
+    final previousEnd = widget.previousEnd;
+    final earliest = previousEnd != null && widget.today.isBefore(previousEnd)
+        ? previousEnd
+        : widget.today;
+    final selected = await _pickDate(earliest, _start);
     if (!mounted || selected == null) return;
     setState(() {
       _start = selected;

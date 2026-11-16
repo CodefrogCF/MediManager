@@ -137,7 +137,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get editSchedule => 'Plan bearbeiten';
 
   @override
-  String get noSchedules => 'Keine laufenden oder künftigen Einnahmepläne';
+  String get noSchedules => 'Keine bearbeitbaren Einnahmepläne';
+
+  @override
+  String get planChangesFrom => 'Änderungen gelten ab';
 
   @override
   String get stopSchedule => 'Plan beenden';

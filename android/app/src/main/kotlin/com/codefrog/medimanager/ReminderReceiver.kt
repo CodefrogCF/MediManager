@@ -74,7 +74,7 @@ internal class ReminderScheduler(private val context: Context) {
         val flags = SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.NO_LOCALIZED_COLLATORS or
             SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING
         SQLiteDatabase.openDatabase(file.path, null, flags).use { database ->
-            if (database.version != 4) return false
+            if (database.version !in 4..5) return false
             database.setForeignKeyConstraintsEnabled(true)
             val store = ReminderStore(database)
             val now = Instant.now()
@@ -213,7 +213,7 @@ internal class ReminderScheduler(private val context: Context) {
             else DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMAN)
         val date = key.date.format(format)
         val time = plan.scheduledMinute?.let { String.format(Locale.ROOT, " · %02d:%02d", it / 60, it % 60) }.orEmpty()
-        val slot = plan.label ?: strings.getString("slotIdentity").replace("{id}", plan.id.toString())
+        val slot = plan.label ?: strings.getString("slotIdentity").replace("{id}", plan.logicalId.toString())
         val publicNotification = builder()
             .setSmallIcon(R.drawable.ic_reminder)
             .setContentTitle(strings.getString("app"))

@@ -14,6 +14,11 @@ typedef DailyIntake = ({
   SlotReminder? reminder,
 });
 
+typedef MedicationPlan = ({
+  MedicationSchedule schedule,
+  LocalDate? previousEnd,
+});
+
 final class MedicationRepository {
   MedicationRepository(this._db, {this._now = DateTime.now});
 
@@ -159,6 +164,20 @@ final class MedicationRepository {
           ]))
           .watch();
 
+  Stream<List<MedicationPlan>> watchPlans(int medicationId) =>
+      watchSchedules(medicationId).map((schedules) {
+        final plans = <int, MedicationPlan>{};
+        // The schedules are ordered by effective date, then version ID.
+        for (final schedule in schedules) {
+          final previous = plans[schedule.logicalId]?.schedule;
+          plans[schedule.logicalId] = (
+            schedule: schedule,
+            previousEnd: previous?.endsBefore,
+          );
+        }
+        return plans.values.toList();
+      });
+
   Stream<List<DailyIntake>> watchDailyIntakes(LocalDate date) {
     final schedules = _db.medicationSchedules;
     final medications = _db.medications;
@@ -244,18 +263,58 @@ final class MedicationRepository {
       throw StateError('Medication is inactive');
     }
 
+    final name = _optionalText(label);
+    int? planId;
     if (replacesScheduleId != null) {
       final old = await (_schedules(
         medicationId,
       )..where((row) => row.id.equals(replacesScheduleId))).getSingle();
+      final versions =
+          await (_schedules(medicationId)
+                ..where(
+                  (row) =>
+                      row.id.equals(old.logicalId) |
+                      row.planId.equals(old.logicalId),
+                )
+                ..orderBy([(row) => OrderingTerm.asc(row.id)]))
+              .get();
+      if (versions.last.id != old.id) {
+        throw StateError('Plan has already been edited');
+      }
+      final previousEnd = versions.length > 1
+          ? versions[versions.length - 2].endsBefore
+          : null;
       final boundary = await _changeBoundary(old, date);
       final end = old.endsBefore;
       final canReschedule =
           date.isBefore(old.startsOn) && boundary == old.startsOn;
       if ((end != null && !boundary.isBefore(end)) ||
-          (!canReschedule && startsOn != boundary)) {
+          (!canReschedule && startsOn != boundary) ||
+          (previousEnd != null && startsOn.isBefore(previousEnd))) {
         throw StateError('Schedule cannot be replaced on this date');
       }
+      if (recurrence.weekdayMask == old.recurrence.weekdayMask &&
+          minutesAfterMidnight == old.minutesAfterMidnight &&
+          name == old.label &&
+          endsBefore == end &&
+          (!canReschedule || startsOn == old.startsOn)) {
+        return old.id;
+      }
+      if (canReschedule) {
+        await (_db.update(
+          _db.medicationSchedules,
+        )..where((row) => row.id.equals(old.id))).write(
+          MedicationSchedulesCompanion(
+            recurrence: Value(recurrence),
+            minutesAfterMidnight: Value(minutesAfterMidnight),
+            startsOn: Value(startsOn),
+            endsBefore: Value(endsBefore),
+            label: Value(name),
+          ),
+        );
+        return old.id;
+      }
+      planId = old.logicalId;
       await _endSchedule(old.id, boundary);
     }
 
@@ -268,7 +327,8 @@ final class MedicationRepository {
             minutesAfterMidnight: Value(minutesAfterMidnight),
             startsOn: startsOn,
             endsBefore: Value(endsBefore),
-            label: Value(_optionalText(label)),
+            label: Value(name),
+            planId: Value(planId),
           ),
         );
     if (replacesScheduleId != null) {

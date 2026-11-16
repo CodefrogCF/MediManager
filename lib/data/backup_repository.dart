@@ -33,7 +33,7 @@ final class BackupRepository {
 
   static const maxBytes = 32 * 1024 * 1024;
   static const _format = 'medimanager-backup';
-  static const _version = 1;
+  static const _version = 2;
   static const _invalid = BackupException(BackupProblem.invalid);
 
   final AppDatabase _db;
@@ -88,7 +88,8 @@ final class BackupRepository {
       if (envelope['format'] != _format || envelope['version'] is! int) {
         throw _invalid;
       }
-      if (envelope['version'] != _version) {
+      final version = envelope['version'];
+      if (version != 1 && version != _version) {
         throw const BackupException(BackupProblem.unsupported);
       }
       _keys(envelope, const ['format', 'version', 'sha256', 'payload']);
@@ -100,7 +101,12 @@ final class BackupRepository {
       _keys(source, _schema.keys);
       final tables = <String, List<_Row>>{
         for (final table in _schema.entries)
-          table.key: _readRows(source[table.key], table.value),
+          table.key: _readRows(
+            source[table.key],
+            table.value,
+            legacySchedules:
+                version == 1 && table.key == 'medication_schedules',
+          ),
       };
       _validateRelationships(tables);
       return BackupPreview._(
@@ -147,12 +153,20 @@ final class BackupRepository {
     await _db.delete(_db.appSettings).go();
   }
 
-  static List<_Row> _readRows(Object? value, _Table table) {
+  static List<_Row> _readRows(
+    Object? value,
+    _Table table, {
+    required bool legacySchedules,
+  }) {
     if (value is! List) throw _invalid;
     final keys = <String>{};
     return value.map((item) {
       final data = _object(item);
-      _keys(data, table.fields.keys);
+      final fields = table.fields.keys;
+      _keys(
+        data,
+        legacySchedules ? fields.where((key) => key != 'plan_id') : fields,
+      );
       final row = <String, Object?>{
         for (final field in table.fields.entries)
           field.key: field.value.decode(data[field.key]),
@@ -178,7 +192,10 @@ final class BackupRepository {
     if (firstDetails.length != medications.length) throw _invalid;
 
     final schedules = <int, MedicationSchedule>{};
-    for (final row in tables['medication_schedules']!) {
+    final scheduleRows = tables['medication_schedules']!
+      ..sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
+    final latestVersions = <int, MedicationSchedule>{};
+    for (final row in scheduleRows) {
       final id = row['id'] as int;
       final medication = row['medication_id'] as int;
       final start = row['starts_on'] as int;
@@ -187,14 +204,28 @@ final class BackupRepository {
       if (first == null || first > start || (end != null && end < start)) {
         throw _invalid;
       }
-      schedules[id] = MedicationSchedule(
+      final planId = row['plan_id'] as int?;
+      final schedule = MedicationSchedule(
         id: id,
         medicationId: medication,
+        planId: planId,
         recurrence: Recurrence.fromMask(row['recurrence'] as int),
         minutesAfterMidnight: row['minutes_after_midnight'] as int?,
         startsOn: LocalDate.fromEpochDay(start),
         endsBefore: end == null ? null : LocalDate.fromEpochDay(end),
       );
+      if (planId != null) {
+        final original = schedules[planId];
+        final previousEnd = latestVersions[planId]?.endsBefore;
+        if (original?.planId != null ||
+            original?.medicationId != medication ||
+            previousEnd == null ||
+            schedule.startsOn.isBefore(previousEnd)) {
+          throw _invalid;
+        }
+      }
+      schedules[id] = schedule;
+      latestVersions[schedule.logicalId] = schedule;
     }
 
     final confirmed = <(int, int)>{};
@@ -263,6 +294,7 @@ const _schema = <String, _Table>{
       'starts_on': _Field.date,
       'ends_before': _Field.optionalDate,
       'label': _Field.text,
+      'plan_id': _Field.optionalId,
     },
   ),
   'intake_events': (
@@ -300,6 +332,7 @@ const _schema = <String, _Table>{
 
 enum _Field {
   id,
+  optionalId,
   singleton,
   text,
   nonEmpty,
@@ -325,7 +358,7 @@ enum _Field {
   };
 
   Object? decode(Object? value) => switch ((this, value)) {
-    (id, int n) when n > 0 && n <= _maxSafeInteger => n,
+    (id || optionalId, int n) when n > 0 && n <= _maxSafeInteger => n,
     (singleton, 1) => 1,
     (text, String s) => s,
     (nonEmpty, String s) when s.trim().isNotEmpty => s,
@@ -340,7 +373,8 @@ enum _Field {
     (accent, 'green' || 'blue' || 'teal' || 'orange' || 'purple' || 'red') =>
       value,
     (language, 'de' || 'en') => value,
-    (text || optionalDate || optionalTimestamp || minute, null) => null,
+    (optionalId || text || optionalDate || optionalTimestamp || minute, null) =>
+      null,
     _ => throw BackupRepository._invalid,
   };
 }

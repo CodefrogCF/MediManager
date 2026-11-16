@@ -347,8 +347,14 @@ abstract class AppLocalizations {
   /// No description provided for @noSchedules.
   ///
   /// In en, this message translates to:
-  /// **'No current or upcoming intake plans'**
+  /// **'No editable intake plans'**
   String get noSchedules;
+
+  /// No description provided for @planChangesFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply from'**
+  String get planChangesFrom;
 
   /// No description provided for @stopSchedule.
   ///

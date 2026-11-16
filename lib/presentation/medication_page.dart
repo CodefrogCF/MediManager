@@ -4,6 +4,7 @@ import '../data/android_reminders.dart';
 import '../data/intake_repository.dart';
 import '../data/medication_repository.dart';
 import '../domain/intake_event.dart';
+import '../domain/local_date.dart';
 import '../domain/medication.dart';
 import 'labels.dart';
 import 'reminder_settings.dart';
@@ -151,7 +152,7 @@ class _MedicationDetail extends StatefulWidget {
 
 class _MedicationDetailState extends State<_MedicationDetail> {
   late final _medication = widget.medications.watchMedication(widget.id);
-  late final _schedules = widget.medications.watchSchedules(widget.id);
+  late final _plans = widget.medications.watchPlans(widget.id);
 
   @override
   Widget build(BuildContext context) => StreamBuilder(
@@ -232,31 +233,32 @@ class _MedicationDetailState extends State<_MedicationDetail> {
               ? IconButton(
                   tooltip: context.l10n.addSchedule,
                   icon: const Icon(Icons.add),
-                  onPressed: () => _editSchedule(),
+                  onPressed: _editSchedule,
                 )
               : null,
         ),
         StreamBuilder(
-          stream: _schedules,
+          stream: _plans,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return ListTile(title: Text(context.l10n.loadError));
             }
-            final schedules = snapshot.data;
-            if (schedules == null) {
+            final plans = snapshot.data;
+            if (plans == null) {
               return const Center(child: CircularProgressIndicator());
             }
             final today = widget.medications.today;
-            final current = schedules.where(
-              (schedule) => schedule.isCurrentOrUpcoming(today),
+            final current = plans.where(
+              (plan) => plan.schedule.canChange(today),
             );
             if (current.isEmpty) {
               return ListTile(title: Text(context.l10n.noSchedules));
             }
             return Column(
               children: [
-                for (final schedule in current) ...[
+                for (final (:schedule, :previousEnd) in current) ...[
                   ListTile(
+                    key: ValueKey(('plan', schedule.logicalId)),
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -282,10 +284,13 @@ class _MedicationDetailState extends State<_MedicationDetail> {
                         ),
                       ].join('\n'),
                     ),
-                    trailing: medication.isActive && schedule.canChange(today)
+                    trailing: medication.isActive
                         ? PopupMenuButton<bool>(
                             onSelected: (edit) => edit
-                                ? _editSchedule(schedule)
+                                ? _editSchedule(
+                                    schedule: schedule,
+                                    previousEnd: previousEnd,
+                                  )
                                 : _stopSchedule(schedule),
                             itemBuilder: (_) => [
                               PopupMenuItem(
@@ -373,11 +378,17 @@ class _MedicationDetailState extends State<_MedicationDetail> {
     }
   }
 
-  Future<void> _editSchedule([MedicationSchedule? schedule]) async {
+  Future<void> _editSchedule({
+    MedicationSchedule? schedule,
+    LocalDate? previousEnd,
+  }) async {
     final draft = await showDialog<ScheduleDraft>(
       context: context,
-      builder: (_) =>
-          ScheduleEditor(today: widget.medications.today, schedule: schedule),
+      builder: (_) => ScheduleEditor(
+        today: widget.medications.today,
+        schedule: schedule,
+        previousEnd: previousEnd,
+      ),
     );
     if (draft == null || !mounted) return;
     await _save(context, () async {

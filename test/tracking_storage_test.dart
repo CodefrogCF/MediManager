@@ -92,8 +92,71 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        4,
+        5,
       );
+    },
+  );
+
+  test(
+    'v4 upgrade preserves independent schedules and their reminder settings',
+    () async {
+      final v4 = jsonDecode(
+        await File('drift_schemas/drift_schema_v4.json').readAsString(),
+      ) as Map<String, dynamic>;
+      final now = DateTime(2026, 3, 27, 12);
+      final date = LocalDate.fromDateTime(now);
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            for (final entity in v4['fixed_sql'] as List<dynamic>) {
+              raw.execute(
+                (entity['sql'] as List<dynamic>).single['sql'] as String,
+              );
+            }
+            raw.execute('PRAGMA user_version = 4');
+            raw.execute(
+              "INSERT INTO medications VALUES (7, 'Vitamin D', NULL, 1, 0)",
+            );
+            raw.execute(
+              "INSERT INTO medication_details VALUES (7, -100000000, 'Vitamin D', NULL)",
+            );
+            raw.execute(
+              '''INSERT INTO medication_schedules VALUES
+           (11, 7, 0, 480, ?, NULL, 'Morgens'),
+           (12, 7, 0, 480, ?, NULL, 'Morgens')''',
+              [date.epochDay, date.epochDay],
+            );
+            raw.execute(
+              'INSERT INTO slot_reminders VALUES (11, 1, 465, 10, 0)',
+            );
+            raw.execute(
+              '''INSERT INTO intake_events
+           (id, schedule_id, scheduled_date, kind, recorded_at, recorded_on)
+           VALUES (17, 11, ?, 'confirmation', ?, ?)''',
+              [date.epochDay, now.microsecondsSinceEpoch, date.epochDay],
+            );
+          },
+        ),
+      );
+      addTearDown(db.close);
+      final medications = MedicationRepository(db, now: () => now);
+      final original = await medications.watchDailyIntakes(date).first;
+      expect(original.map((slot) => slot.schedule.logicalId), [11, 12]);
+      expect(original.first.latestEvent?.id, 17);
+      expect(original.first.reminder?.reminderMinute, 465);
+      final revised = await medications.saveSchedule(
+        medicationId: 7,
+        replacesScheduleId: 11,
+        recurrence: const Recurrence.daily(),
+        minutesAfterMidnight: 540,
+        startsOn: date.plusDays(1),
+        endsBefore: null,
+        label: 'Morgens',
+      );
+      final plans = await medications.watchPlans(7).first;
+      expect(plans.map((plan) => plan.schedule.logicalId), [11, 12]);
+      expect(plans.first.schedule.id, revised);
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
     },
   );
 

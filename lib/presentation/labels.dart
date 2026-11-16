@@ -54,5 +54,5 @@ abstract final class Labels {
       : context.l10n.periodRange(start, end);
 
   static String slot(BuildContext context, MedicationSchedule schedule) =>
-      schedule.label ?? context.l10n.slotIdentity(schedule.id);
+      schedule.label ?? context.l10n.slotIdentity(schedule.logicalId);
 }

@@ -49,6 +49,8 @@ class MedicationSchedules extends Table {
   IntColumn get endsBefore =>
       integer().nullable().map(const _LocalDateConverter())();
   TextColumn get label => text().nullable()();
+  IntColumn get planId =>
+      integer().nullable().references(MedicationSchedules, #id)();
 
   @override
   List<String> get customConstraints => [
@@ -186,12 +188,12 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: (m, from, to) async {
-      if (from < 1 || from > 3 || to != 4) {
+      if (from < 1 || from > 4 || to != 5) {
         throw UnsupportedError('Unsupported database migration $from to $to');
       }
       await transaction(() async {
@@ -207,9 +209,11 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(intakeEvents, intakeEvents.recordedOn);
         }
         if (from < 3) await m.createTable(reminderOccurrences);
-        await m.addColumn(medicationSchedules, medicationSchedules.label);
-        await m.createTable(slotReminders);
-        await m.createTable(appSettings);
+        if (from < 4) {
+          await m.addColumn(medicationSchedules, medicationSchedules.label);
+          await m.createTable(slotReminders);
+          await m.createTable(appSettings);
+        }
         if (from == 3) {
           await customStatement('''
             INSERT INTO slot_reminders
@@ -220,6 +224,7 @@ class AppDatabase extends _$AppDatabase {
             ''');
           await customStatement('DROP TABLE medication_reminders');
         }
+        await m.addColumn(medicationSchedules, medicationSchedules.planId);
       });
     },
     beforeOpen: (_) async {

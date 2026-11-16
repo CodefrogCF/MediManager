@@ -50,7 +50,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        4,
+        5,
       );
       expect((await db.select(db.medications).getSingle()).name, 'Vitamin D');
       expect((await db.select(db.medicationSchedules).getSingle()).id, 11);

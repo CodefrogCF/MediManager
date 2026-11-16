@@ -68,7 +68,7 @@ void main() {
       expect(
         (await reopened.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        4,
+        5,
       );
       final medication = (await meds.watchMedication(medicationId).first)!;
       expect(medication.name, 'Testplan');
@@ -160,6 +160,21 @@ void main() {
       final intake = (scheduleId: oldId, scheduledDate: friday);
       await intakes.confirm(intake);
       final saturday = friday.plusDays(1);
+      expect(
+        await medications.saveSchedule(
+          medicationId: medicationId,
+          replacesScheduleId: oldId,
+          recurrence: const Recurrence.daily(),
+          minutesAfterMidnight: null,
+          startsOn: saturday,
+          endsBefore: null,
+        ),
+        oldId,
+      );
+      expect(
+        await medications.watchSchedules(medicationId).first,
+        hasLength(1),
+      );
       await expectLater(
         medications.saveSchedule(
           medicationId: medicationId,
@@ -186,6 +201,40 @@ void main() {
       expect(await scheduledIds(saturday), isEmpty);
       expect(await scheduledIds(friday.plusDays(2)), [newId]);
       expect((await intakes.historyFor(intake)).single.scheduleId, oldId);
+      final plan = (await medications.watchPlans(medicationId).first).single;
+      expect(plan.schedule.id, newId);
+      expect(plan.schedule.logicalId, oldId);
+      expect(plan.previousEnd, saturday);
+
+      // Editing the upcoming revision cannot move it into the earlier version.
+      await expectLater(
+        medications.saveSchedule(
+          medicationId: medicationId,
+          replacesScheduleId: newId,
+          recurrence: const Recurrence.daily(),
+          minutesAfterMidnight: 600,
+          startsOn: friday,
+          endsBefore: null,
+        ),
+        throwsStateError,
+      );
+      expect(
+        await medications.saveSchedule(
+          medicationId: medicationId,
+          replacesScheduleId: newId,
+          recurrence: const Recurrence.daily(),
+          minutesAfterMidnight: 600,
+          startsOn: saturday,
+          endsBefore: null,
+        ),
+        newId,
+      );
+      expect(await scheduledIds(friday), [oldId]);
+      expect(await scheduledIds(saturday), [newId]);
+      expect(
+        await medications.watchSchedules(medicationId).first,
+        hasLength(2),
+      );
       await expectLater(
         medications.saveSchedule(
           medicationId: medicationId,
@@ -197,6 +246,26 @@ void main() {
         ),
         throwsStateError,
       );
+    });
+
+    test('rescheduling a plan that has never started keeps its row', () async {
+      final id = await daily(startsOn: friday.plusDays(3));
+      expect(
+        await medications.saveSchedule(
+          medicationId: medicationId,
+          replacesScheduleId: id,
+          recurrence: const Recurrence.daily(),
+          minutesAfterMidnight: 480,
+          startsOn: friday,
+          endsBefore: null,
+        ),
+        id,
+      );
+      final schedule =
+          (await medications.watchSchedules(medicationId).first).single;
+      expect(schedule.startsOn, friday);
+      expect(schedule.logicalId, id);
+      expect(schedule.minutesAfterMidnight, 480);
     });
 
     test(

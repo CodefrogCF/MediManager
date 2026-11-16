@@ -8,6 +8,94 @@ import 'package:medimanager/domain/medication.dart';
 import 'package:medimanager/main.dart';
 
 void main() {
+  testWidgets('editing a plan keeps one editable entry and preserves today', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final now = DateTime(2026, 3, 27, 12);
+    final medications = MedicationRepository(db, now: () => now);
+    final intakes = IntakeRepository(db, now: () => now);
+    final today = medications.today;
+    final (medication, morning) = (await tester.runAsync(() async {
+      final medication = await medications.createMedication(name: 'Vitamin D');
+      final morning = await medications.saveSchedule(
+        medicationId: medication,
+        recurrence: const Recurrence.daily(),
+        minutesAfterMidnight: 480,
+        startsOn: today,
+        endsBefore: null,
+      );
+      await medications.saveSchedule(
+        medicationId: medication,
+        recurrence: const Recurrence.daily(),
+        minutesAfterMidnight: 1200,
+        startsOn: today,
+        endsBefore: null,
+        label: 'Abends',
+      );
+      // Older versions stored closed and future schedules as separate rows.
+      await medications.saveSchedule(
+        medicationId: medication,
+        recurrence: const Recurrence.daily(),
+        minutesAfterMidnight: 720,
+        startsOn: today,
+        endsBefore: today.plusDays(1),
+        label: 'Endet heute',
+      );
+      await intakes.confirm((scheduleId: morning, scheduledDate: today));
+      return (medication, morning);
+    }))!;
+
+    await tester.pumpWidget(
+      MainApp(medications: medications, intakes: intakes),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> tap(Finder finder) async {
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+    }
+
+    await tap(find.text('Medikamente'));
+    await tap(find.text('Vitamin D'));
+    expect(find.text('Endet heute'), findsNothing);
+    final title = 'Plan $morning';
+    final plan = find.widgetWithText(ListTile, title);
+    final planMenu = find.descendant(
+      of: plan,
+      matching: find.byType(PopupMenuButton<bool>),
+    );
+    await tap(planMenu);
+    await tap(find.text('Plan bearbeiten'));
+    expect(find.text('Änderungen gelten ab'), findsOneWidget);
+    await tap(find.byTooltip('Uhrzeit entfernen'));
+    await tap(find.text('Speichern'));
+    expect(find.text(title), findsOneWidget);
+    expect(planMenu, findsOneWidget);
+    expect(find.text('Abends'), findsOneWidget);
+    expect(find.text('Täglich'), findsNWidgets(2));
+    expect(find.textContaining('Ohne Uhrzeit'), findsOneWidget);
+
+    await tap(planMenu);
+    await tap(find.text('Plan bearbeiten'));
+    await tap(find.text('Speichern'));
+    final schedules = await tester.runAsync(
+      () => medications.watchSchedules(medication).first,
+    );
+    expect(schedules, hasLength(4));
+    final current = await tester.runAsync(
+      () => medications.watchDailyIntakes(today).first,
+    );
+    final original = current!.singleWhere(
+      (slot) => slot.schedule.id == morning,
+    );
+    expect(original.schedule.minutesAfterMidnight, 480);
+    expect(original.latestEvent?.isConfirmation, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
   testWidgets(
     'manage a medication, see its scheduled date, and open inactive history',
     (tester) async {

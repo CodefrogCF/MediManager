@@ -638,6 +638,18 @@ class $MedicationSchedulesTable extends MedicationSchedules
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _planIdMeta = const VerificationMeta('planId');
+  @override
+  late final GeneratedColumn<int> planId = GeneratedColumn<int>(
+    'plan_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES medication_schedules (id)',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -647,6 +659,7 @@ class $MedicationSchedulesTable extends MedicationSchedules
     startsOn,
     endsBefore,
     label,
+    planId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -687,6 +700,12 @@ class $MedicationSchedulesTable extends MedicationSchedules
       context.handle(
         _labelMeta,
         label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('plan_id')) {
+      context.handle(
+        _planIdMeta,
+        planId.isAcceptableOrUnknown(data['plan_id']!, _planIdMeta),
       );
     }
     return context;
@@ -732,6 +751,10 @@ class $MedicationSchedulesTable extends MedicationSchedules
         DriftSqlType.string,
         data['${effectivePrefix}label'],
       ),
+      planId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}plan_id'],
+      ),
     );
   }
 
@@ -758,6 +781,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
   final Value<LocalDate> startsOn;
   final Value<LocalDate?> endsBefore;
   final Value<String?> label;
+  final Value<int?> planId;
   const MedicationSchedulesCompanion({
     this.id = const Value.absent(),
     this.medicationId = const Value.absent(),
@@ -766,6 +790,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
     this.startsOn = const Value.absent(),
     this.endsBefore = const Value.absent(),
     this.label = const Value.absent(),
+    this.planId = const Value.absent(),
   });
   MedicationSchedulesCompanion.insert({
     this.id = const Value.absent(),
@@ -775,6 +800,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
     required LocalDate startsOn,
     this.endsBefore = const Value.absent(),
     this.label = const Value.absent(),
+    this.planId = const Value.absent(),
   }) : medicationId = Value(medicationId),
        recurrence = Value(recurrence),
        startsOn = Value(startsOn);
@@ -786,6 +812,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
     Expression<int>? startsOn,
     Expression<int>? endsBefore,
     Expression<String>? label,
+    Expression<int>? planId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -796,6 +823,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
       if (startsOn != null) 'starts_on': startsOn,
       if (endsBefore != null) 'ends_before': endsBefore,
       if (label != null) 'label': label,
+      if (planId != null) 'plan_id': planId,
     });
   }
 
@@ -807,6 +835,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
     Value<LocalDate>? startsOn,
     Value<LocalDate?>? endsBefore,
     Value<String?>? label,
+    Value<int?>? planId,
   }) {
     return MedicationSchedulesCompanion(
       id: id ?? this.id,
@@ -816,6 +845,7 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
       startsOn: startsOn ?? this.startsOn,
       endsBefore: endsBefore ?? this.endsBefore,
       label: label ?? this.label,
+      planId: planId ?? this.planId,
     );
   }
 
@@ -849,6 +879,9 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
     if (label.present) {
       map['label'] = Variable<String>(label.value);
     }
+    if (planId.present) {
+      map['plan_id'] = Variable<int>(planId.value);
+    }
     return map;
   }
 
@@ -861,7 +894,8 @@ class MedicationSchedulesCompanion extends UpdateCompanion<MedicationSchedule> {
           ..write('minutesAfterMidnight: $minutesAfterMidnight, ')
           ..write('startsOn: $startsOn, ')
           ..write('endsBefore: $endsBefore, ')
-          ..write('label: $label')
+          ..write('label: $label, ')
+          ..write('planId: $planId')
           ..write(')'))
         .toString();
   }
@@ -3048,6 +3082,7 @@ typedef $$MedicationSchedulesTableCreateCompanionBuilder =
       required LocalDate startsOn,
       Value<LocalDate?> endsBefore,
       Value<String?> label,
+      Value<int?> planId,
     });
 typedef $$MedicationSchedulesTableUpdateCompanionBuilder =
     MedicationSchedulesCompanion Function({
@@ -3058,6 +3093,7 @@ typedef $$MedicationSchedulesTableUpdateCompanionBuilder =
       Value<LocalDate> startsOn,
       Value<LocalDate?> endsBefore,
       Value<String?> label,
+      Value<int?> planId,
     });
 
 final class $$MedicationSchedulesTableReferences
@@ -3085,6 +3121,24 @@ final class $$MedicationSchedulesTableReferences
       $_db.medications,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_medicationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $MedicationSchedulesTable _planIdTable(_$AppDatabase db) => db
+      .medicationSchedules
+      .createAlias('medication_schedules__plan_id__medication_schedules__id');
+
+  $$MedicationSchedulesTableProcessedTableManager? get planId {
+    final $_column = $_itemColumn<int>('plan_id');
+    if ($_column == null) return null;
+    final manager = $$MedicationSchedulesTableTableManager(
+      $_db,
+      $_db.medicationSchedules,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_planIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -3209,6 +3263,29 @@ class $$MedicationSchedulesTableFilterComposer
           }) => $$MedicationsTableFilterComposer(
             $db: $db,
             $table: $db.medications,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MedicationSchedulesTableFilterComposer get planId {
+    final $$MedicationSchedulesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.planId,
+      referencedTable: $db.medicationSchedules,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MedicationSchedulesTableFilterComposer(
+            $db: $db,
+            $table: $db.medicationSchedules,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3355,6 +3432,30 @@ class $$MedicationSchedulesTableOrderingComposer
     );
     return composer;
   }
+
+  $$MedicationSchedulesTableOrderingComposer get planId {
+    final $$MedicationSchedulesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.planId,
+          referencedTable: $db.medicationSchedules,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$MedicationSchedulesTableOrderingComposer(
+                $db: $db,
+                $table: $db.medicationSchedules,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$MedicationSchedulesTableAnnotationComposer
@@ -3412,6 +3513,30 @@ class $$MedicationSchedulesTableAnnotationComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return composer;
+  }
+
+  $$MedicationSchedulesTableAnnotationComposer get planId {
+    final $$MedicationSchedulesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.planId,
+          referencedTable: $db.medicationSchedules,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$MedicationSchedulesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.medicationSchedules,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 
@@ -3507,6 +3632,7 @@ class $$MedicationSchedulesTableTableManager
           MedicationSchedule,
           PrefetchHooks Function({
             bool medicationId,
+            bool planId,
             bool intakeEventsRefs,
             bool slotRemindersRefs,
             bool reminderOccurrencesRefs,
@@ -3540,6 +3666,7 @@ class $$MedicationSchedulesTableTableManager
                 Value<LocalDate> startsOn = const Value.absent(),
                 Value<LocalDate?> endsBefore = const Value.absent(),
                 Value<String?> label = const Value.absent(),
+                Value<int?> planId = const Value.absent(),
               }) => MedicationSchedulesCompanion(
                 id: id,
                 medicationId: medicationId,
@@ -3548,6 +3675,7 @@ class $$MedicationSchedulesTableTableManager
                 startsOn: startsOn,
                 endsBefore: endsBefore,
                 label: label,
+                planId: planId,
               ),
           createCompanionCallback:
               ({
@@ -3558,6 +3686,7 @@ class $$MedicationSchedulesTableTableManager
                 required LocalDate startsOn,
                 Value<LocalDate?> endsBefore = const Value.absent(),
                 Value<String?> label = const Value.absent(),
+                Value<int?> planId = const Value.absent(),
               }) => MedicationSchedulesCompanion.insert(
                 id: id,
                 medicationId: medicationId,
@@ -3566,6 +3695,7 @@ class $$MedicationSchedulesTableTableManager
                 startsOn: startsOn,
                 endsBefore: endsBefore,
                 label: label,
+                planId: planId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3580,6 +3710,7 @@ class $$MedicationSchedulesTableTableManager
           prefetchHooksCallback:
               ({
                 medicationId = false,
+                planId = false,
                 intakeEventsRefs = false,
                 slotRemindersRefs = false,
                 reminderOccurrencesRefs = false,
@@ -3617,6 +3748,19 @@ class $$MedicationSchedulesTableTableManager
                             referencedColumn:
                                 $$MedicationSchedulesTableReferences
                                     ._medicationIdTable(db)
+                                    .id,
+                          ) as T;
+                        }
+                        if (planId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.planId,
+                            referencedTable:
+                                $$MedicationSchedulesTableReferences
+                                    ._planIdTable(db),
+                            referencedColumn:
+                                $$MedicationSchedulesTableReferences
+                                    ._planIdTable(db)
                                     .id,
                           ) as T;
                         }
@@ -3707,6 +3851,7 @@ typedef $$MedicationSchedulesTableProcessedTableManager =
       MedicationSchedule,
       PrefetchHooks Function({
         bool medicationId,
+        bool planId,
         bool intakeEventsRefs,
         bool slotRemindersRefs,
         bool reminderOccurrencesRefs,
