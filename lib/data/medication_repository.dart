@@ -11,6 +11,7 @@ typedef DailyIntake = ({
   ScheduledIntake intake,
   MedicationDetail details,
   IntakeEvent? latestEvent,
+  MedicationReminder? reminder,
 });
 
 final class MedicationRepository {
@@ -163,6 +164,7 @@ final class MedicationRepository {
     final medications = _db.medications;
     final details = _db.medicationDetails;
     final events = _db.intakeEvents;
+    final reminders = _db.medicationReminders;
     final day = date.epochDay;
     final earlierDetails = _db.alias(details, 'earlier_details');
     final detailsDate = _db.selectOnly(earlierDetails)
@@ -197,6 +199,10 @@ final class MedicationRepository {
               events,
               events.id.equalsExp(subqueryExpression(latestEventId)),
             ),
+            leftOuterJoin(
+              reminders,
+              reminders.medicationId.equalsExp(medications.id),
+            ),
           ])
           ..where(
             schedules.startsOn.isSmallerOrEqualValue(day) &
@@ -221,6 +227,7 @@ final class MedicationRepository {
               intake: (scheduleId: plan.id, scheduledDate: date),
               details: row.readTable(details),
               latestEvent: row.readTableOrNull(events),
+              reminder: row.readTableOrNull(reminders),
             ),
       ],
     );

@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../data/android_reminders.dart';
 import '../data/intake_repository.dart';
 import '../data/medication_repository.dart';
 import '../domain/intake_event.dart';
 import '../domain/medication.dart';
 import 'labels.dart';
+import 'reminder_settings.dart';
 import 'schedule_editor.dart';
 
 class MedicationPage extends StatefulWidget {
   const MedicationPage({
     required this.medications,
     required this.intakes,
+    this.reminders,
     super.key,
   });
 
   final MedicationRepository medications;
   final IntakeRepository intakes;
+  final AndroidReminders? reminders;
 
   @override
   State<MedicationPage> createState() => _MedicationPageState();
@@ -87,6 +91,7 @@ class _MedicationPageState extends State<MedicationPage> {
                           id: medication.id,
                           medications: widget.medications,
                           intakes: widget.intakes,
+                          reminders: widget.reminders,
                         ),
                       ),
                     ),
@@ -120,11 +125,13 @@ class _MedicationDetail extends StatefulWidget {
     required this.id,
     required this.medications,
     required this.intakes,
+    this.reminders,
   });
 
   final int id;
   final MedicationRepository medications;
   final IntakeRepository intakes;
+  final AndroidReminders? reminders;
 
   @override
   State<_MedicationDetail> createState() => _MedicationDetailState();
@@ -189,6 +196,12 @@ class _MedicationDetailState extends State<_MedicationDetail> {
           title: Text(medication.isActive ? Labels.active : Labels.inactive),
           subtitle: dosage == null ? null : Text(dosage),
         ),
+        if (widget.reminders case final reminders?)
+          ReminderSettings(
+            reminders: reminders,
+            medicationId: medication.id,
+            medicationActive: medication.isActive,
+          ),
         ListTile(
           leading: const Icon(Icons.history),
           title: const Text(Labels.history),

@@ -84,8 +84,49 @@ class IntakeEvents extends Table {
   ];
 }
 
+class MedicationReminders extends Table {
+  IntColumn get medicationId =>
+      integer().references(Medications, #id, onDelete: KeyAction.cascade)();
+  BoolColumn get enabled => boolean()();
+  IntColumn get reminderMinute => integer().nullable()();
+  IntColumn get snoozeMinutes => integer()();
+  IntColumn get changedAt => integer().map(const _UtcTimestampConverter())();
+
+  @override
+  Set<Column> get primaryKey => {medicationId};
+
+  @override
+  List<String> get customConstraints => [
+    'CHECK (reminder_minute BETWEEN 0 AND 1439)',
+    'CHECK (snooze_minutes BETWEEN 1 AND 120)',
+  ];
+}
+
+class ReminderOccurrences extends Table {
+  IntColumn get scheduleId => integer().references(
+    MedicationSchedules,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  IntColumn get scheduledDate => integer().map(const _LocalDateConverter())();
+  IntColumn get snoozedUntil =>
+      integer().nullable().map(const _UtcTimestampConverter())();
+  TextColumn get actionToken => text().nullable()();
+  IntColumn get latestEventId => integer()();
+
+  @override
+  Set<Column> get primaryKey => {scheduleId, scheduledDate};
+}
+
 @DriftDatabase(
-  tables: [Medications, MedicationDetails, MedicationSchedules, IntakeEvents],
+  tables: [
+    Medications,
+    MedicationDetails,
+    MedicationSchedules,
+    IntakeEvents,
+    MedicationReminders,
+    ReminderOccurrences,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
@@ -97,6 +138,13 @@ class AppDatabase extends _$AppDatabase {
     : this(
         driftDatabase(
           name: 'medimanager',
+          native: DriftNativeOptions(
+            setup: (database) {
+              // Android's reminder receiver uses a separate SQLite process.
+              database.execute('PRAGMA busy_timeout = 2500');
+              database.execute('PRAGMA journal_mode = WAL');
+            },
+          ),
           web: DriftWebOptions(
             sqlite3Wasm: Uri.parse('sqlite3.wasm'),
             driftWorker: Uri.parse('drift_worker.js'),
@@ -115,24 +163,28 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: (m, from, to) async {
-      if (from != 1 || to != 2) {
+      if ((from != 1 && from != 2) || to != 3) {
         throw UnsupportedError('Unsupported database migration $from to $to');
       }
       await transaction(() async {
-        await m.createTable(medicationDetails);
-        await customStatement(
-          '''
-          INSERT INTO medication_details (medication_id, starts_on, name, dosage)
-          SELECT id, ?, name, dosage FROM medications
-          ''',
-          [initialDetailsDate.epochDay],
-        );
-        await m.addColumn(intakeEvents, intakeEvents.recordedOn);
+        if (from == 1) {
+          await m.createTable(medicationDetails);
+          await customStatement(
+            '''
+            INSERT INTO medication_details (medication_id, starts_on, name, dosage)
+            SELECT id, ?, name, dosage FROM medications
+            ''',
+            [initialDetailsDate.epochDay],
+          );
+          await m.addColumn(intakeEvents, intakeEvents.recordedOn);
+        }
+        await m.createTable(medicationReminders);
+        await m.createTable(reminderOccurrences);
       });
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

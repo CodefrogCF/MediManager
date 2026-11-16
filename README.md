@@ -18,6 +18,19 @@ medication schedule changes.
 
 Reminders are optional. Reliable intake tracking is not.
 
+## Android reminders
+
+Configure **Erinnerungen** in a medication's details. Reminders follow
+the days in its intake plans and use each plan's time or a custom
+reminder time. The snooze interval is configurable per medication.
+
+**Genommen** records a confirmation. Opening, dismissing, or postponing
+a notification leaves the intake log unchanged. Android may delay
+alarms during battery saving or Doze. Reminders are rebuilt after
+reboot, schedule changes, or a change to the local clock or time zone.
+A snooze can carry across midnight and expires if it is over 24 hours overdue.
+Tracking is available with notifications disabled and in the web app.
+
 ## Web build
 
 Run `flutter run -d chrome` for development. The app bundles Roboto

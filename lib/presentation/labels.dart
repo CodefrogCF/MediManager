@@ -6,6 +6,20 @@ import '../domain/medication.dart';
 abstract final class Labels {
   static const app = 'MediManager';
   static const today = 'Heute';
+  static const reminders = 'Erinnerungen';
+  static const enableReminders = 'Erinnerungen aktivieren';
+  static const remindersPaused = 'Für dieses inaktive Medikament pausiert';
+  static const notificationPermission =
+      'Android-Benachrichtigungen sind deaktiviert.';
+  static const notificationSettings = 'Android-Einstellungen öffnen';
+  static const reminderTime = 'Erinnerungszeit';
+  static const useScheduledTime = 'Uhrzeit aus Einnahmeplan';
+  static const reminderDetails =
+      'Erinnerungen folgen den Tagen des Einnahmeplans. Pläne ohne Uhrzeit brauchen eine eigene Erinnerungszeit.';
+  static const reminderTiming = 'Android kann Erinnerungen verzögern.';
+  static const snoozeInterval = 'Dauer der Verschiebung';
+  static const remindLater = 'Später erinnern';
+  static const snoozeError = 'Die Erinnerung konnte nicht verschoben werden.';
   static const archive = 'Verlauf';
   static const medications = 'Medikamente';
   static const active = 'Aktiv';
@@ -107,4 +121,7 @@ abstract final class Labels {
   static String recordedAt(String timestamp) => 'Erfasst: $timestamp';
   static String reportedAt(String timestamp) => 'Einnahmezeit: $timestamp';
   static String backfillDate(String date) => 'Einnahmedatum: $date';
+  static String minutes(int minutes) => '$minutes Minuten';
+  static String snoozed(int minutes) =>
+      'Erinnerung um $minutes Minuten verschoben.';
 }

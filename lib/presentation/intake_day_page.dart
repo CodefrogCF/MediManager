@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/android_reminders.dart';
 import '../data/intake_repository.dart';
 import '../data/medication_repository.dart';
 import '../domain/intake_event.dart';
@@ -14,6 +15,7 @@ class IntakeDayPage extends StatefulWidget {
     required this.medications,
     required this.intakes,
     this.onDateSelected,
+    this.reminders,
     super.key,
   });
 
@@ -22,6 +24,7 @@ class IntakeDayPage extends StatefulWidget {
   final MedicationRepository medications;
   final IntakeRepository intakes;
   final ValueChanged<LocalDate>? onDateSelected;
+  final AndroidReminders? reminders;
 
   @override
   State<IntakeDayPage> createState() => _IntakeDayPageState();
@@ -110,6 +113,7 @@ class _IntakeDayPageState extends State<IntakeDayPage> {
                     key: ValueKey(entry.intake),
                     entry: entry,
                     intakes: widget.intakes,
+                    reminders: widget.reminders,
                     retrospective: widget.date.isBefore(widget.today),
                   );
                 },
@@ -127,12 +131,14 @@ class _IntakeCard extends StatefulWidget {
     required this.entry,
     required this.intakes,
     required this.retrospective,
+    required this.reminders,
     super.key,
   });
 
   final DailyIntake entry;
   final IntakeRepository intakes;
   final bool retrospective;
+  final AndroidReminders? reminders;
 
   @override
   State<_IntakeCard> createState() => _IntakeCardState();
@@ -210,6 +216,27 @@ class _IntakeCardState extends State<_IntakeCard> {
     );
   }
 
+  Future<void> _snooze(AndroidReminders reminders, int minutes) async {
+    if (_busy) return;
+    setState(() => _saving = true);
+    try {
+      final entry = widget.entry;
+      final saved = await reminders.snooze(
+        entry.intake,
+        entry.latestEvent?.id ?? 0,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(saved ? Labels.snoozed(minutes) : Labels.snoozeError),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
@@ -217,6 +244,8 @@ class _IntakeCardState extends State<_IntakeCard> {
     final confirmation = latest?.isConfirmation == true ? latest : null;
     final dosage = entry.details.dosage;
     final minutes = entry.schedule.minutesAfterMidnight;
+    final reminders = widget.reminders;
+    final reminder = entry.reminder;
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -257,6 +286,25 @@ class _IntakeCardState extends State<_IntakeCard> {
                   TextButton(
                     onPressed: _busy ? null : () => _apply(confirmation),
                     child: const Text(Labels.undo),
+                  ),
+                if (confirmation == null &&
+                    !widget.retrospective &&
+                    entry.medication.isActive &&
+                    reminder?.enabled == true &&
+                    reminders != null)
+                  ValueListenableBuilder(
+                    valueListenable: reminders.permission,
+                    builder: (context, allowed, _) => allowed
+                        ? TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _snooze(
+                                    reminders,
+                                    reminder!.snoozeMinutes,
+                                  ),
+                            child: const Text(Labels.remindLater),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 if (latest != null)
                   IconButton(

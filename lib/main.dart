@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/android_reminders.dart';
 import 'data/app_database.dart';
 import 'data/intake_repository.dart';
 import 'data/medication_repository.dart';
@@ -16,12 +17,13 @@ import 'presentation/medication_page.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final database = AppDatabase.open();
+  final android = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   runApp(
     MainApp(
       medications: MedicationRepository(database),
       intakes: IntakeRepository(database),
-      localClockChanges:
-          !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+      reminders: android ? AndroidReminders(database) : null,
+      localClockChanges: android
           ? const EventChannel('medimanager/clock_changes')
                 .receiveBroadcastStream()
           : null,
@@ -34,12 +36,14 @@ class MainApp extends StatelessWidget {
     required this.medications,
     required this.intakes,
     this.localClockChanges,
+    this.reminders,
     super.key,
   });
 
   final MedicationRepository medications;
   final IntakeRepository intakes;
   final Stream<Object?>? localClockChanges;
+  final AndroidReminders? reminders;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +63,7 @@ class MainApp extends StatelessWidget {
         medications: medications,
         intakes: intakes,
         localClockChanges: localClockChanges,
+        reminders: reminders,
       ),
     );
   }
@@ -69,11 +74,13 @@ class _HomePage extends StatefulWidget {
     required this.medications,
     required this.intakes,
     required this.localClockChanges,
+    this.reminders,
   });
 
   final MedicationRepository medications;
   final IntakeRepository intakes;
   final Stream<Object?>? localClockChanges;
+  final AndroidReminders? reminders;
 
   @override
   State<_HomePage> createState() => _HomePageState();
@@ -100,12 +107,20 @@ class _HomePageState extends State<_HomePage> {
         _foreground = state == AppLifecycleState.resumed;
         if (_foreground) {
           _refreshClock();
+          widget.reminders?.resume();
         } else {
           _midnight?.cancel();
         }
       },
     );
-    _clockEvents = widget.localClockChanges?.listen((_) => _refreshClock());
+    _clockEvents = widget.localClockChanges?.listen((event) {
+      if (event == AndroidReminders.dataChanged) {
+        widget.reminders?.externalChanges();
+      } else {
+        _refreshClock();
+      }
+    });
+    widget.reminders?.start();
     _refreshClock();
   }
 
@@ -124,6 +139,7 @@ class _HomePageState extends State<_HomePage> {
     _midnight?.cancel();
     _lifecycle.dispose();
     unawaited(_clockEvents?.cancel());
+    widget.reminders?.dispose();
     super.dispose();
   }
 
@@ -137,6 +153,7 @@ class _HomePageState extends State<_HomePage> {
           ? MedicationPage(
               medications: widget.medications,
               intakes: widget.intakes,
+              reminders: widget.reminders,
             )
           : IntakeDayPage(
               key: ValueKey((_selected, date)),
@@ -144,6 +161,7 @@ class _HomePageState extends State<_HomePage> {
               today: _today,
               medications: widget.medications,
               intakes: widget.intakes,
+              reminders: widget.reminders,
               onDateSelected: archive
                   ? (selected) => setState(() => _archiveDate = selected)
                   : null,
