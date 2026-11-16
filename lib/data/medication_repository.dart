@@ -11,7 +11,7 @@ typedef DailyIntake = ({
   ScheduledIntake intake,
   MedicationDetail details,
   IntakeEvent? latestEvent,
-  MedicationReminder? reminder,
+  SlotReminder? reminder,
 });
 
 final class MedicationRepository {
@@ -164,17 +164,8 @@ final class MedicationRepository {
     final medications = _db.medications;
     final details = _db.medicationDetails;
     final events = _db.intakeEvents;
-    final reminders = _db.medicationReminders;
+    final reminders = _db.slotReminders;
     final day = date.epochDay;
-    final earlierDetails = _db.alias(details, 'earlier_details');
-    final detailsDate = _db.selectOnly(earlierDetails)
-      ..addColumns([earlierDetails.startsOn])
-      ..where(
-        earlierDetails.medicationId.equalsExp(schedules.medicationId) &
-            earlierDetails.startsOn.isSmallerOrEqualValue(day),
-      )
-      ..orderBy([OrderingTerm.desc(earlierDetails.startsOn)])
-      ..limit(1);
     final earlierEvents = _db.alias(events, 'earlier_events');
     final latestEventId = _db.selectOnly(earlierEvents)
       ..addColumns([earlierEvents.id])
@@ -192,8 +183,7 @@ final class MedicationRepository {
             ),
             innerJoin(
               details,
-              details.medicationId.equalsExp(schedules.medicationId) &
-                  details.startsOn.equalsExp(subqueryExpression(detailsDate)),
+              _db.detailsOn(schedules.medicationId, Variable(day)),
             ),
             leftOuterJoin(
               events,
@@ -201,7 +191,7 @@ final class MedicationRepository {
             ),
             leftOuterJoin(
               reminders,
-              reminders.medicationId.equalsExp(medications.id),
+              reminders.scheduleId.equalsExp(schedules.id),
             ),
           ])
           ..where(
@@ -240,6 +230,7 @@ final class MedicationRepository {
     required int? minutesAfterMidnight,
     required LocalDate startsOn,
     required LocalDate? endsBefore,
+    String? label,
   }) => _db.transaction(() async {
     final date = today;
     if (startsOn.isBefore(date) ||
@@ -268,7 +259,7 @@ final class MedicationRepository {
       await _endSchedule(old.id, boundary);
     }
 
-    return _db
+    final id = await _db
         .into(_db.medicationSchedules)
         .insert(
           MedicationSchedulesCompanion.insert(
@@ -277,8 +268,21 @@ final class MedicationRepository {
             minutesAfterMidnight: Value(minutesAfterMidnight),
             startsOn: startsOn,
             endsBefore: Value(endsBefore),
+            label: Value(_optionalText(label)),
           ),
         );
+    if (replacesScheduleId != null) {
+      final settings =
+          await (_db.select(_db.slotReminders)
+                ..where((row) => row.scheduleId.equals(replacesScheduleId)))
+              .getSingleOrNull();
+      if (settings != null) {
+        await _db
+            .into(_db.slotReminders)
+            .insert(settings.copyWith(scheduleId: id));
+      }
+    }
+    return id;
   });
 
   Future<void> stopSchedule(int id) => _db.transaction(() async {

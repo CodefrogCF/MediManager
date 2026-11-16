@@ -57,6 +57,7 @@ final class MedicationSchedule {
     required this.minutesAfterMidnight,
     required this.startsOn,
     required this.endsBefore,
+    this.label,
   });
 
   final int id;
@@ -65,6 +66,7 @@ final class MedicationSchedule {
   final int? minutesAfterMidnight;
   final LocalDate startsOn;
   final LocalDate? endsBefore;
+  final String? label;
 
   bool occursOn(LocalDate date) {
     final end = endsBefore;

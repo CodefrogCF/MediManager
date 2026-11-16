@@ -21,6 +21,7 @@ internal data class ReminderPlan(
     val reminderMinute: Int?,
     val snoozeMinutes: Int,
     val changedAt: Instant,
+    val label: String? = null,
 ) {
     fun occursOn(date: LocalDate): Boolean {
         val day = date.toEpochDay()
@@ -44,6 +45,16 @@ internal data class ReminderState(
 internal data class LatestIntake(val id: Long = 0, val confirmed: Boolean = false)
 
 internal class ReminderStore(private val db: SQLiteDatabase) {
+    fun language(): String = db.rawQuery("SELECT language FROM app_settings WHERE id = 1", null)
+        .use { if (it.moveToFirst() && it.getString(0) == "en") "en" else "de" }
+
+    fun nameOn(key: ReminderKey): String? = db.rawQuery(
+        """SELECT d.name FROM medication_details d
+           JOIN medication_schedules s ON s.medication_id = d.medication_id
+           WHERE s.id = ? AND d.starts_on <= ? ORDER BY d.starts_on DESC LIMIT 1""",
+        key.arguments(),
+    ).use { if (it.moveToFirst()) it.getString(0) else null }
+
     inline fun <T> transaction(action: () -> T): T {
         // Obtain the write lock before reading status so Flutter and notification
         // actions cannot both confirm the same occurrence.
@@ -60,10 +71,10 @@ internal class ReminderStore(private val db: SQLiteDatabase) {
     private val planQuery = """
         SELECT s.id, m.name, s.starts_on, s.ends_before, s.recurrence,
                s.minutes_after_midnight, coalesce(r.reminder_minute, s.minutes_after_midnight),
-               r.snooze_minutes, r.changed_at
+               r.snooze_minutes, r.changed_at, s.label
         FROM medication_schedules s
         JOIN medications m ON s.medication_id = m.id
-        JOIN medication_reminders r ON r.medication_id = m.id
+        JOIN slot_reminders r ON r.schedule_id = s.id
         WHERE m.is_active = 1 AND r.enabled = 1
     """.trimIndent()
 
@@ -82,6 +93,7 @@ internal class ReminderStore(private val db: SQLiteDatabase) {
         getLong(0), getString(1), getLong(2), nullableLong(3), getInt(4),
         nullableLong(5)?.toInt(), nullableLong(6)?.toInt(), getInt(7),
         Instant.ofEpochMilli(getLong(8) / 1000),
+        getString(9),
     )
 
     fun latest(key: ReminderKey): LatestIntake = db.rawQuery(

@@ -8,6 +8,7 @@ import 'app_database.dart';
 typedef MedicationIntakeEvent = ({
   IntakeEvent event,
   MedicationSchedule schedule,
+  MedicationDetail details,
 });
 
 final class IntakeRepository {
@@ -22,9 +23,14 @@ final class IntakeRepository {
   Stream<List<MedicationIntakeEvent>> watchForMedication(int medicationId) {
     final events = _db.intakeEvents;
     final schedules = _db.medicationSchedules;
+    final details = _db.medicationDetails;
     final query =
         _db.select(events).join([
             innerJoin(schedules, schedules.id.equalsExp(events.scheduleId)),
+            innerJoin(
+              details,
+              _db.detailsOn(schedules.medicationId, events.scheduledDate),
+            ),
           ])
           ..where(schedules.medicationId.equals(medicationId))
           ..orderBy([
@@ -34,7 +40,11 @@ final class IntakeRepository {
     return query.watch().map(
       (rows) => [
         for (final row in rows)
-          (event: row.readTable(events), schedule: row.readTable(schedules)),
+          (
+            event: row.readTable(events),
+            schedule: row.readTable(schedules),
+            details: row.readTable(details),
+          ),
       ],
     );
   }

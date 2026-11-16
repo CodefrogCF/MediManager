@@ -16,6 +16,7 @@ class IntakeDayPage extends StatefulWidget {
     required this.intakes,
     this.onDateSelected,
     this.reminders,
+    this.onSettings,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class IntakeDayPage extends StatefulWidget {
   final IntakeRepository intakes;
   final ValueChanged<LocalDate>? onDateSelected;
   final AndroidReminders? reminders;
+  final VoidCallback? onSettings;
 
   @override
   State<IntakeDayPage> createState() => _IntakeDayPageState();
@@ -51,7 +53,17 @@ class _IntakeDayPageState extends State<IntakeDayPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(_archive ? Labels.archive : Labels.today)),
+    appBar: AppBar(
+      title: Text(_archive ? context.l10n.archive : context.l10n.today),
+      actions: [
+        if (widget.onSettings != null)
+          IconButton(
+            tooltip: context.l10n.settings,
+            onPressed: widget.onSettings,
+            icon: const Icon(Icons.settings_outlined),
+          ),
+      ],
+    ),
     body: Column(
       children: [
         if (_archive)
@@ -60,7 +72,7 @@ class _IntakeDayPageState extends State<IntakeDayPage> {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: Labels.previousDay,
+                  tooltip: context.l10n.previousDay,
                   onPressed: _firstDate.isBefore(widget.date)
                       ? () => widget.onDateSelected!(widget.date.plusDays(-1))
                       : null,
@@ -74,7 +86,7 @@ class _IntakeDayPageState extends State<IntakeDayPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: Labels.nextDay,
+                  tooltip: context.l10n.nextDay,
                   onPressed: widget.date.isBefore(widget.today)
                       ? () => widget.onDateSelected!(widget.date.plusDays(1))
                       : null,
@@ -93,7 +105,7 @@ class _IntakeDayPageState extends State<IntakeDayPage> {
             stream: _entries,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return const Center(child: Text(Labels.loadError));
+                return Center(child: Text(context.l10n.loadError));
               }
               final entries = snapshot.data;
               if (entries == null) {
@@ -101,7 +113,9 @@ class _IntakeDayPageState extends State<IntakeDayPage> {
               }
               if (entries.isEmpty) {
                 return Center(
-                  child: Text(_archive ? Labels.emptyDate : Labels.emptyToday),
+                  child: Text(
+                    _archive ? context.l10n.emptyDate : context.l10n.emptyToday,
+                  ),
                 );
               }
               return ListView.builder(
@@ -174,7 +188,7 @@ class _IntakeCardState extends State<_IntakeCard> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text(Labels.saveError)));
+            .showSnackBar(SnackBar(content: Text(context.l10n.saveError)));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -191,7 +205,7 @@ class _IntakeCardState extends State<_IntakeCard> {
         future: events,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text(Labels.loadError));
+            return Center(child: Text(context.l10n.loadError));
           }
           final history = snapshot.data;
           if (history == null) {
@@ -199,13 +213,13 @@ class _IntakeCardState extends State<_IntakeCard> {
           }
           return ListView(
             children: [
-              const ListTile(title: Text(Labels.eventHistory)),
+              ListTile(title: Text(context.l10n.eventHistory)),
               for (final event in history.reversed)
                 ListTile(
                   title: Text(
                     event.isConfirmation
-                        ? Labels.confirmedStatus
-                        : Labels.correctedStatus,
+                        ? context.l10n.confirmedStatus
+                        : context.l10n.correctedStatus,
                   ),
                   subtitle: Text(_eventDetails(context, event).join('\n')),
                 ),
@@ -228,7 +242,9 @@ class _IntakeCardState extends State<_IntakeCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(saved ? Labels.snoozed(minutes) : Labels.snoozeError),
+            content: Text(
+              saved ? context.l10n.snoozed(minutes) : context.l10n.snoozeError,
+            ),
           ),
         );
       }
@@ -246,6 +262,11 @@ class _IntakeCardState extends State<_IntakeCard> {
     final minutes = entry.schedule.minutesAfterMidnight;
     final reminders = widget.reminders;
     final reminder = entry.reminder;
+    final slot = Labels.slot(context, entry.schedule);
+    Text action(String label) => Text(
+      label,
+      semanticsLabel: context.l10n.actionFor(label, entry.details.name, slot),
+    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -257,15 +278,16 @@ class _IntakeCardState extends State<_IntakeCard> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             if (dosage != null) Text(dosage),
+            Text(slot),
             if (minutes != null) Text(Labels.scheduleTime(context, minutes)),
             const SizedBox(height: 8),
             Text(
               confirmation == null
-                  ? Labels.unconfirmedStatus
-                  : Labels.confirmedStatus,
+                  ? context.l10n.unconfirmedStatus
+                  : context.l10n.confirmedStatus,
             ),
             if (latest != null) ...[
-              if (!latest.isConfirmation) const Text(Labels.correctedStatus),
+              if (!latest.isConfirmation) Text(context.l10n.correctedStatus),
               for (final line in _eventDetails(context, latest)) Text(line),
             ],
             const SizedBox(height: 4),
@@ -278,14 +300,16 @@ class _IntakeCardState extends State<_IntakeCard> {
                     onPressed: _busy || confirmation != null
                         ? null
                         : () => _apply(null),
-                    child: Text(
-                      widget.retrospective ? Labels.backfill : Labels.taken,
+                    child: action(
+                      widget.retrospective
+                          ? context.l10n.backfill
+                          : context.l10n.taken,
                     ),
                   ),
                 if (confirmation != null)
                   TextButton(
                     onPressed: _busy ? null : () => _apply(confirmation),
-                    child: const Text(Labels.undo),
+                    child: action(context.l10n.undo),
                   ),
                 if (confirmation == null &&
                     !widget.retrospective &&
@@ -302,13 +326,13 @@ class _IntakeCardState extends State<_IntakeCard> {
                                     reminders,
                                     reminder!.snoozeMinutes,
                                   ),
-                            child: const Text(Labels.remindLater),
+                            child: action(context.l10n.remindLater),
                           )
                         : const SizedBox.shrink(),
                   ),
                 if (latest != null)
                   IconButton(
-                    tooltip: Labels.eventHistory,
+                    tooltip: context.l10n.eventHistory,
                     onPressed: _busy ? null : _showEvents,
                     icon: const Icon(Icons.history),
                   ),
@@ -322,10 +346,10 @@ class _IntakeCardState extends State<_IntakeCard> {
 }
 
 List<String> _eventDetails(BuildContext context, IntakeEvent event) => [
-  if (event.isConfirmation && event.isRetrospective) Labels.backfilled,
-  Labels.recordedAt(Labels.timestamp(context, event.recordedAt)),
+  if (event.isConfirmation && event.isRetrospective) context.l10n.backfilled,
+  context.l10n.recordedAt(Labels.timestamp(context, event.recordedAt)),
   if (event.reportedIntakeAt case final reported?)
-    Labels.reportedAt(Labels.timestamp(context, reported)),
+    context.l10n.reportedAt(Labels.timestamp(context, reported)),
 ];
 
 class _RetrospectiveDialog extends StatefulWidget {
@@ -376,24 +400,24 @@ class _RetrospectiveDialogState extends State<_RetrospectiveDialog> {
     final reported = _reportedAt;
     return AlertDialog(
       scrollable: true,
-      title: const Text(Labels.backfillTitle),
+      title: Text(context.l10n.backfillTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(Labels.backfillDate(Labels.date(context, widget.date))),
+          Text(context.l10n.backfillDate(Labels.date(context, widget.date))),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(Labels.reportedTime),
+            title: Text(context.l10n.reportedTime),
             subtitle: Text(
               reported == null
-                  ? Labels.noTime
+                  ? context.l10n.noTime
                   : Labels.timeOfDay(context, TimeOfDay.fromDateTime(reported)),
             ),
             onTap: _pickTime,
             trailing: reported != null || _invalidTime
                 ? IconButton(
-                    tooltip: Labels.removeTime,
+                    tooltip: context.l10n.removeTime,
                     onPressed: () => setState(() {
                       _reportedAt = null;
                       _invalidTime = false;
@@ -404,7 +428,7 @@ class _RetrospectiveDialogState extends State<_RetrospectiveDialog> {
           ),
           if (_invalidTime)
             Text(
-              Labels.invalidReportedTime,
+              context.l10n.invalidReportedTime,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
         ],
@@ -412,13 +436,13 @@ class _RetrospectiveDialogState extends State<_RetrospectiveDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(Labels.cancel),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
           onPressed: _invalidTime
               ? null
               : () => Navigator.pop(context, (reportedAt: reported)),
-          child: const Text(Labels.backfill),
+          child: Text(context.l10n.backfill),
         ),
       ],
     );

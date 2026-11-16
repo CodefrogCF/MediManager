@@ -11,11 +11,11 @@ final class ReminderRepository {
   final AppDatabase _db;
   final DateTime Function() _now;
 
-  Stream<MedicationReminder?> watch(int medicationId) =>
-      _settings(medicationId).watchSingleOrNull();
+  Stream<SlotReminder?> watch(int scheduleId) =>
+      _settings(scheduleId).watchSingleOrNull();
 
   Future<void> save(
-    int medicationId, {
+    int scheduleId, {
     required bool enabled,
     required int? reminderMinute,
     required int snoozeMinutes,
@@ -23,10 +23,8 @@ final class ReminderRepository {
     if (reminderMinute != null) {
       RangeError.checkValueInInterval(reminderMinute, 0, 1439);
     }
-    if (!snoozeOptions.contains(snoozeMinutes)) {
-      throw ArgumentError.value(snoozeMinutes, 'snoozeMinutes');
-    }
-    final previous = await _settings(medicationId).getSingleOrNull();
+    RangeError.checkValueInInterval(snoozeMinutes, 1, 120);
+    final previous = await _settings(scheduleId).getSingleOrNull();
     if (previous?.enabled == enabled &&
         previous?.reminderMinute == reminderMinute &&
         previous?.snoozeMinutes == snoozeMinutes) {
@@ -36,10 +34,10 @@ final class ReminderRepository {
         previous?.enabled == enabled &&
         previous?.reminderMinute == reminderMinute;
     await _db
-        .into(_db.medicationReminders)
+        .into(_db.slotReminders)
         .insertOnConflictUpdate(
-          MedicationRemindersCompanion.insert(
-            medicationId: Value(medicationId),
+          SlotRemindersCompanion.insert(
+            scheduleId: Value(scheduleId),
             enabled: enabled,
             reminderMinute: Value(reminderMinute),
             snoozeMinutes: snoozeMinutes,
@@ -48,8 +46,6 @@ final class ReminderRepository {
         );
   });
 
-  SimpleSelectStatement<$MedicationRemindersTable, MedicationReminder>
-  _settings(int id) =>
-      _db.select(_db.medicationReminders)
-        ..where((row) => row.medicationId.equals(id));
+  SimpleSelectStatement<$SlotRemindersTable, SlotReminder> _settings(int id) =>
+      _db.select(_db.slotReminders)..where((row) => row.scheduleId.equals(id));
 }

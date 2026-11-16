@@ -20,9 +20,11 @@ Reminders are optional. Reliable intake tracking is not.
 
 ## Android reminders
 
-Configure **Erinnerungen** in a medication's details. Reminders follow
-the days in its intake plans and use each plan's time or a custom
-reminder time. The snooze interval is configurable per medication.
+Add separate intake plans for the same medication, for example morning
+and evening, with optional labels. Each plan has its own confirmations,
+history, and **Erinnerungen** settings in the medication details. Reminders
+follow the plan's days and use its time or a custom reminder time. Each
+slot has its own snooze interval.
 
 **Genommen** records a confirmation. Opening, dismissing, or postponing
 a notification leaves the intake log unchanged. Android may delay
@@ -30,6 +32,35 @@ alarms during battery saving or Doze. Reminders are rebuilt after
 reboot, schedule changes, or a change to the local clock or time zone.
 A snooze can carry across midnight and expires if it is over 24 hours overdue.
 Tracking is available with notifications disabled and in the web app.
+
+## Settings and local data
+
+Open **Einstellungen** / **Settings** from the toolbar to choose German
+or English, follow the system appearance or use a light or dark theme,
+and select an accent colour.
+
+**Daten und Datenschutz** / **Data and privacy** lets you export, restore,
+and delete local data. Backups are readable UTF-8 JSON containing medication
+details, schedule versions, reminder preferences, intake events, and
+appearance and language settings. The versioned format includes a SHA-256
+checksum of the JSON payload. The 32 MiB limit applies to export and import.
+Backups are unencrypted and contain health information. Android uses the
+system file picker. On the web, exports go to the browser's downloads.
+
+Restore shows a preview and requires confirmation before replacing the local
+database. A failed restore leaves the previous data available. Device-specific
+notification tokens and snoozes are cleared, and Android rebuilds eligible
+reminders from the restored settings. Deletion requires confirmation and
+clears the app's records and preferences. Exported files stay at their chosen
+locations.
+
+MediManager stores medication records in the Android app sandbox or under the
+web app's origin in the current browser profile. The app uses no accounts,
+analytics, or automatic uploads. Clearing browser site data removes that
+copy. For a shared device, use the device screen lock or a separate OS or
+browser profile. An app-level PIN would add a second lock and would leave
+exported files outside its protection. MediManager uses the existing device
+or profile controls.
 
 ## Web build
 

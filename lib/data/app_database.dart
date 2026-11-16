@@ -48,6 +48,7 @@ class MedicationSchedules extends Table {
   // An equal start and end cancels an upcoming schedule without removing its ID.
   IntColumn get endsBefore =>
       integer().nullable().map(const _LocalDateConverter())();
+  TextColumn get label => text().nullable()();
 
   @override
   List<String> get customConstraints => [
@@ -84,16 +85,19 @@ class IntakeEvents extends Table {
   ];
 }
 
-class MedicationReminders extends Table {
-  IntColumn get medicationId =>
-      integer().references(Medications, #id, onDelete: KeyAction.cascade)();
+class SlotReminders extends Table {
+  IntColumn get scheduleId => integer().references(
+    MedicationSchedules,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   BoolColumn get enabled => boolean()();
   IntColumn get reminderMinute => integer().nullable()();
   IntColumn get snoozeMinutes => integer()();
   IntColumn get changedAt => integer().map(const _UtcTimestampConverter())();
 
   @override
-  Set<Column> get primaryKey => {medicationId};
+  Set<Column> get primaryKey => {scheduleId};
 
   @override
   List<String> get customConstraints => [
@@ -118,14 +122,33 @@ class ReminderOccurrences extends Table {
   Set<Column> get primaryKey => {scheduleId, scheduledDate};
 }
 
+class AppSettings extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  TextColumn get themeMode => text()();
+  TextColumn get accent => text()();
+  TextColumn get language => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+    'CHECK (id = 1)',
+    "CHECK (theme_mode IN ('system', 'light', 'dark'))",
+    "CHECK (accent IN ('green', 'blue', 'teal', 'orange', 'purple', 'red'))",
+    "CHECK (language IN ('de', 'en'))",
+  ];
+}
+
 @DriftDatabase(
   tables: [
     Medications,
     MedicationDetails,
     MedicationSchedules,
     IntakeEvents,
-    MedicationReminders,
+    SlotReminders,
     ReminderOccurrences,
+    AppSettings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -163,12 +186,12 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: (m, from, to) async {
-      if ((from != 1 && from != 2) || to != 3) {
+      if (from < 1 || from > 3 || to != 4) {
         throw UnsupportedError('Unsupported database migration $from to $to');
       }
       await transaction(() async {
@@ -183,12 +206,44 @@ class AppDatabase extends _$AppDatabase {
           );
           await m.addColumn(intakeEvents, intakeEvents.recordedOn);
         }
-        await m.createTable(medicationReminders);
-        await m.createTable(reminderOccurrences);
+        if (from < 3) await m.createTable(reminderOccurrences);
+        await m.addColumn(medicationSchedules, medicationSchedules.label);
+        await m.createTable(slotReminders);
+        await m.createTable(appSettings);
+        if (from == 3) {
+          await customStatement('''
+            INSERT INTO slot_reminders
+              (schedule_id, enabled, reminder_minute, snooze_minutes, changed_at)
+            SELECT s.id, r.enabled, r.reminder_minute, r.snooze_minutes, r.changed_at
+            FROM medication_reminders r
+            JOIN medication_schedules s ON s.medication_id = r.medication_id
+            ''');
+          await customStatement('DROP TABLE medication_reminders');
+        }
       });
     },
-    beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
+    beforeOpen: (_) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement('PRAGMA secure_delete = ON');
+    },
   );
+
+  Expression<bool> detailsOn(
+    Expression<int> medicationId,
+    Expression<int> day,
+  ) {
+    final earlier = alias(medicationDetails, 'earlier_details');
+    final latest = selectOnly(earlier)
+      ..addColumns([earlier.startsOn])
+      ..where(
+        earlier.medicationId.equalsExp(medicationId) &
+            earlier.startsOn.isSmallerOrEqual(day),
+      )
+      ..orderBy([OrderingTerm.desc(earlier.startsOn)])
+      ..limit(1);
+    return medicationDetails.medicationId.equalsExp(medicationId) &
+        medicationDetails.startsOn.equalsExp(subqueryExpression(latest));
+  }
 }
 
 class _LocalDateConverter extends TypeConverter<LocalDate, int> {

@@ -3,16 +3,19 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/android_reminders.dart';
 import 'data/app_database.dart';
+import 'data/backup_repository.dart';
 import 'data/intake_repository.dart';
 import 'data/medication_repository.dart';
+import 'data/settings_repository.dart';
 import 'domain/local_date.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'presentation/intake_day_page.dart';
 import 'presentation/labels.dart';
 import 'presentation/medication_page.dart';
+import 'presentation/settings_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +25,8 @@ void main() {
     MainApp(
       medications: MedicationRepository(database),
       intakes: IntakeRepository(database),
+      settings: SettingsRepository(database),
+      backup: BackupRepository(database),
       reminders: android ? AndroidReminders(database) : null,
       localClockChanges: android
           ? const EventChannel('medimanager/clock_changes')
@@ -37,6 +42,8 @@ class MainApp extends StatelessWidget {
     required this.intakes,
     this.localClockChanges,
     this.reminders,
+    this.settings,
+    this.backup,
     super.key,
   });
 
@@ -44,29 +51,41 @@ class MainApp extends StatelessWidget {
   final IntakeRepository intakes;
   final Stream<Object?>? localClockChanges;
   final AndroidReminders? reminders;
+  final SettingsRepository? settings;
+  final BackupRepository? backup;
 
   @override
-  Widget build(BuildContext context) {
-    const seed = Color(0xFF206656);
-    return MaterialApp(
-      title: Labels.app,
-      locale: const Locale('de'),
-      supportedLocales: const [Locale('de')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      theme: ThemeData(colorSchemeSeed: seed, useMaterial3: true),
-      darkTheme: ThemeData(
-        colorSchemeSeed: seed,
-        brightness: Brightness.dark,
+  Widget build(BuildContext context) => StreamBuilder(
+    stream: settings?.watch,
+    builder: (context, snapshot) {
+      final preferences = snapshot.data ?? SettingsRepository.defaults;
+      final seed = AppAccent.values.byName(preferences.accent).color;
+      ThemeData theme(Brightness brightness) => ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: seed,
+          brightness: brightness,
+        ),
         useMaterial3: true,
-      ),
-      home: _HomePage(
-        medications: medications,
-        intakes: intakes,
-        localClockChanges: localClockChanges,
-        reminders: reminders,
-      ),
-    );
-  }
+      );
+      return MaterialApp(
+        onGenerateTitle: (context) => context.l10n.app,
+        locale: Locale(preferences.language),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: theme(Brightness.light),
+        darkTheme: theme(Brightness.dark),
+        themeMode: ThemeMode.values.byName(preferences.themeMode),
+        home: _HomePage(
+          medications: medications,
+          intakes: intakes,
+          localClockChanges: localClockChanges,
+          reminders: reminders,
+          settings: settings,
+          backup: backup,
+        ),
+      );
+    },
+  );
 }
 
 class _HomePage extends StatefulWidget {
@@ -75,12 +94,16 @@ class _HomePage extends StatefulWidget {
     required this.intakes,
     required this.localClockChanges,
     this.reminders,
+    this.settings,
+    this.backup,
   });
 
   final MedicationRepository medications;
   final IntakeRepository intakes;
   final Stream<Object?>? localClockChanges;
   final AndroidReminders? reminders;
+  final SettingsRepository? settings;
+  final BackupRepository? backup;
 
   @override
   State<_HomePage> createState() => _HomePageState();
@@ -148,12 +171,25 @@ class _HomePageState extends State<_HomePage> {
     final archive = _selected == 2;
     final previous = _archiveDate ?? _today.plusDays(-1);
     final date = archive && !_today.isBefore(previous) ? previous : _today;
+    final settings = widget.settings;
+    final onSettings = settings == null
+        ? null
+        : () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => SettingsPage(
+                repository: settings,
+                backup: widget.backup,
+                reminders: widget.reminders,
+              ),
+            ),
+          );
     return Scaffold(
       body: _selected == 1
           ? MedicationPage(
               medications: widget.medications,
               intakes: widget.intakes,
               reminders: widget.reminders,
+              onSettings: onSettings,
             )
           : IntakeDayPage(
               key: ValueKey((_selected, date)),
@@ -162,6 +198,7 @@ class _HomePageState extends State<_HomePage> {
               medications: widget.medications,
               intakes: widget.intakes,
               reminders: widget.reminders,
+              onSettings: onSettings,
               onDateSelected: archive
                   ? (selected) => setState(() => _archiveDate = selected)
                   : null,
@@ -175,18 +212,18 @@ class _HomePageState extends State<_HomePage> {
             _selected = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            label: Labels.today,
+            icon: const Icon(Icons.today_outlined),
+            label: context.l10n.today,
           ),
           NavigationDestination(
-            icon: Icon(Icons.medication_outlined),
-            label: Labels.medications,
+            icon: const Icon(Icons.medication_outlined),
+            label: context.l10n.medications,
           ),
           NavigationDestination(
-            icon: Icon(Icons.history),
-            label: Labels.archive,
+            icon: const Icon(Icons.history),
+            label: context.l10n.archive,
           ),
         ],
       ),

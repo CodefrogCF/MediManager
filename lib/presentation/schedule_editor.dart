@@ -9,6 +9,7 @@ typedef ScheduleDraft = ({
   int? minutesAfterMidnight,
   LocalDate startsOn,
   LocalDate? endsBefore,
+  String? label,
 });
 
 class ScheduleEditor extends StatefulWidget {
@@ -28,6 +29,7 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
   LocalDate? _lastDay;
   TimeOfDay? _time;
   String? _error;
+  String? _label;
 
   bool get _started {
     final schedule = widget.schedule;
@@ -39,6 +41,7 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
     super.initState();
     final schedule = widget.schedule;
     _daily = schedule?.recurrence.isDaily ?? true;
+    _label = schedule?.label;
     _weekdays = _daily ? {} : schedule!.recurrence.weekdays;
     _start = schedule?.changeBoundary(widget.today) ?? widget.today;
     _lastDay = schedule?.endsBefore?.plusDays(-1);
@@ -55,18 +58,25 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
     return AlertDialog(
       scrollable: true,
       title: Text(
-        widget.schedule == null ? Labels.addSchedule : Labels.editSchedule,
+        widget.schedule == null
+            ? context.l10n.addSchedule
+            : context.l10n.editSchedule,
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          TextFormField(
+            initialValue: _label,
+            decoration: InputDecoration(labelText: context.l10n.slotLabel),
+            onChanged: (label) => _label = label,
+          ),
           DropdownButton<bool>(
             isExpanded: true,
             value: _daily,
-            items: const [
-              DropdownMenuItem(value: true, child: Text(Labels.daily)),
-              DropdownMenuItem(value: false, child: Text(Labels.weekly)),
+            items: [
+              DropdownMenuItem(value: true, child: Text(context.l10n.daily)),
+              DropdownMenuItem(value: false, child: Text(context.l10n.weekly)),
             ],
             onChanged: (daily) => setState(() {
               _daily = daily!;
@@ -79,7 +89,7 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
               children: [
                 for (var day = DateTime.monday; day <= DateTime.sunday; day++)
                   FilterChip(
-                    label: Text(Labels.weekdays[day - 1]),
+                    label: Text(Labels.weekdays(context)[day - 1]),
                     selected: _weekdays.contains(day),
                     onSelected: (selected) => setState(() {
                       selected ? _weekdays.add(day) : _weekdays.remove(day);
@@ -90,23 +100,23 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
             ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(Labels.startDate),
+            title: Text(context.l10n.startDate),
             subtitle: Text(Labels.date(context, _start)),
             onTap: _started ? null : _pickStart,
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(Labels.endDate),
+            title: Text(context.l10n.endDate),
             subtitle: Text(
               lastDay == null
-                  ? Labels.noEndDate
+                  ? context.l10n.noEndDate
                   : Labels.date(context, lastDay),
             ),
             onTap: _pickEnd,
             trailing: lastDay == null
                 ? null
                 : IconButton(
-                    tooltip: Labels.removeEndDate,
+                    tooltip: context.l10n.removeEndDate,
                     icon: const Icon(Icons.clear),
                     onPressed: () => setState(() {
                       _lastDay = null;
@@ -116,15 +126,17 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(Labels.time),
+            title: Text(context.l10n.time),
             subtitle: Text(
-              time == null ? Labels.noTime : Labels.timeOfDay(context, time),
+              time == null
+                  ? context.l10n.noTime
+                  : Labels.timeOfDay(context, time),
             ),
             onTap: _pickTime,
             trailing: time == null
                 ? null
                 : IconButton(
-                    tooltip: Labels.removeTime,
+                    tooltip: context.l10n.removeTime,
                     icon: const Icon(Icons.clear),
                     onPressed: () => setState(() => _time = null),
                   ),
@@ -139,9 +151,9 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(Labels.cancel),
+          child: Text(context.l10n.cancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text(Labels.save)),
+        FilledButton(onPressed: _submit, child: Text(context.l10n.save)),
       ],
     );
   }
@@ -192,11 +204,11 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
     final lastDay = _lastDay;
     final time = _time;
     if (!_daily && _weekdays.isEmpty) {
-      setState(() => _error = Labels.selectWeekday);
+      setState(() => _error = context.l10n.selectWeekday);
       return;
     }
     if (lastDay != null && lastDay.isBefore(_start)) {
-      setState(() => _error = Labels.invalidEndDate);
+      setState(() => _error = context.l10n.invalidEndDate);
       return;
     }
     Navigator.pop<ScheduleDraft>(context, (
@@ -206,6 +218,7 @@ class _ScheduleEditorState extends State<ScheduleEditor> {
       minutesAfterMidnight: time == null ? null : time.hour * 60 + time.minute,
       startsOn: _start,
       endsBefore: lastDay?.plusDays(1),
+      label: _label,
     ));
   }
 }

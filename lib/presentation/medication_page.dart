@@ -14,12 +14,14 @@ class MedicationPage extends StatefulWidget {
     required this.medications,
     required this.intakes,
     this.reminders,
+    this.onSettings,
     super.key,
   });
 
   final MedicationRepository medications;
   final IntakeRepository intakes;
   final AndroidReminders? reminders;
+  final VoidCallback? onSettings;
 
   @override
   State<MedicationPage> createState() => _MedicationPageState();
@@ -31,9 +33,19 @@ class _MedicationPageState extends State<MedicationPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text(Labels.medications)),
+    appBar: AppBar(
+      title: Text(context.l10n.medications),
+      actions: [
+        if (widget.onSettings != null)
+          IconButton(
+            tooltip: context.l10n.settings,
+            onPressed: widget.onSettings,
+            icon: const Icon(Icons.settings_outlined),
+          ),
+      ],
+    ),
     floatingActionButton: FloatingActionButton(
-      tooltip: Labels.addMedication,
+      tooltip: context.l10n.addMedication,
       onPressed: _addMedication,
       child: const Icon(Icons.add),
     ),
@@ -42,9 +54,9 @@ class _MedicationPageState extends State<MedicationPage> {
         Padding(
           padding: const EdgeInsets.all(12),
           child: SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: true, label: Text(Labels.active)),
-              ButtonSegment(value: false, label: Text(Labels.inactive)),
+            segments: [
+              ButtonSegment(value: true, label: Text(context.l10n.active)),
+              ButtonSegment(value: false, label: Text(context.l10n.inactive)),
             ],
             selected: {_activeOnly},
             onSelectionChanged: (selection) =>
@@ -56,7 +68,7 @@ class _MedicationPageState extends State<MedicationPage> {
             stream: _rows,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return const Center(child: Text(Labels.loadError));
+                return Center(child: Text(context.l10n.loadError));
               }
               final data = snapshot.data;
               if (data == null) {
@@ -69,8 +81,8 @@ class _MedicationPageState extends State<MedicationPage> {
                 return Center(
                   child: Text(
                     _activeOnly
-                        ? Labels.noActiveMedications
-                        : Labels.noInactiveMedications,
+                        ? context.l10n.noActiveMedications
+                        : context.l10n.noInactiveMedications,
                   ),
                 );
               }
@@ -148,26 +160,28 @@ class _MedicationDetailState extends State<_MedicationDetail> {
       final medication = snapshot.data;
       return Scaffold(
         appBar: AppBar(
-          title: Text(medication?.name ?? Labels.medications),
+          title: Text(medication?.name ?? context.l10n.medications),
           actions: [
             if (medication != null)
               PopupMenuButton<_MedicationAction>(
                 onSelected: (value) =>
                     _applyMedicationAction(value, medication),
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: _MedicationAction.edit,
-                    child: Text(Labels.editMedication),
+                    child: Text(context.l10n.editMedication),
                   ),
                   PopupMenuItem(
                     value: _MedicationAction.toggleActive,
                     child: Text(
-                      medication.isActive ? Labels.deactivate : Labels.activate,
+                      medication.isActive
+                          ? context.l10n.deactivate
+                          : context.l10n.activate,
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: _MedicationAction.delete,
-                    child: Text(Labels.delete),
+                    child: Text(context.l10n.delete),
                   ),
                 ],
               ),
@@ -179,13 +193,13 @@ class _MedicationDetailState extends State<_MedicationDetail> {
   );
 
   Widget _body(AsyncSnapshot<Medication?> snapshot) {
-    if (snapshot.hasError) return const Center(child: Text(Labels.loadError));
+    if (snapshot.hasError) return Center(child: Text(context.l10n.loadError));
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const Center(child: CircularProgressIndicator());
     }
     final medication = snapshot.data;
     if (medication == null) {
-      return const Center(child: Text(Labels.medicationMissing));
+      return Center(child: Text(context.l10n.medicationMissing));
     }
     final dosage = medication.dosage;
 
@@ -193,18 +207,14 @@ class _MedicationDetailState extends State<_MedicationDetail> {
       padding: const EdgeInsets.symmetric(vertical: 12),
       children: [
         ListTile(
-          title: Text(medication.isActive ? Labels.active : Labels.inactive),
+          title: Text(
+            medication.isActive ? context.l10n.active : context.l10n.inactive,
+          ),
           subtitle: dosage == null ? null : Text(dosage),
         ),
-        if (widget.reminders case final reminders?)
-          ReminderSettings(
-            reminders: reminders,
-            medicationId: medication.id,
-            medicationActive: medication.isActive,
-          ),
         ListTile(
           leading: const Icon(Icons.history),
-          title: const Text(Labels.history),
+          title: Text(context.l10n.history),
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.push<void>(
             context,
@@ -217,10 +227,10 @@ class _MedicationDetailState extends State<_MedicationDetail> {
         ),
         const Divider(),
         ListTile(
-          title: const Text(Labels.schedules),
+          title: Text(context.l10n.schedules),
           trailing: medication.isActive
               ? IconButton(
-                  tooltip: Labels.addSchedule,
+                  tooltip: context.l10n.addSchedule,
                   icon: const Icon(Icons.add),
                   onPressed: () => _editSchedule(),
                 )
@@ -230,7 +240,7 @@ class _MedicationDetailState extends State<_MedicationDetail> {
           stream: _schedules,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return const ListTile(title: Text(Labels.loadError));
+              return ListTile(title: Text(context.l10n.loadError));
             }
             final schedules = snapshot.data;
             if (schedules == null) {
@@ -241,13 +251,19 @@ class _MedicationDetailState extends State<_MedicationDetail> {
               (schedule) => schedule.isCurrentOrUpcoming(today),
             );
             if (current.isEmpty) {
-              return const ListTile(title: Text(Labels.noSchedules));
+              return ListTile(title: Text(context.l10n.noSchedules));
             }
             return Column(
               children: [
-                for (final schedule in current)
+                for (final schedule in current) ...[
                   ListTile(
-                    title: Text(Labels.recurrence(schedule.recurrence)),
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(Labels.slot(context, schedule)),
+                        Text(Labels.recurrence(context, schedule.recurrence)),
+                      ],
+                    ),
                     subtitle: Text(
                       [
                         Labels.scheduleTime(
@@ -255,6 +271,7 @@ class _MedicationDetailState extends State<_MedicationDetail> {
                           schedule.minutesAfterMidnight,
                         ),
                         Labels.period(
+                          context,
                           Labels.date(context, schedule.startsOn),
                           schedule.endsBefore == null
                               ? null
@@ -270,19 +287,29 @@ class _MedicationDetailState extends State<_MedicationDetail> {
                             onSelected: (edit) => edit
                                 ? _editSchedule(schedule)
                                 : _stopSchedule(schedule),
-                            itemBuilder: (_) => const [
+                            itemBuilder: (_) => [
                               PopupMenuItem(
                                 value: true,
-                                child: Text(Labels.editSchedule),
+                                child: Text(context.l10n.editSchedule),
                               ),
                               PopupMenuItem(
                                 value: false,
-                                child: Text(Labels.stopSchedule),
+                                child: Text(context.l10n.stopSchedule),
                               ),
                             ],
                           )
                         : null,
                   ),
+                  if (widget.reminders case final reminders?)
+                    ReminderSettings(
+                      key: ValueKey(schedule.id),
+                      reminders: reminders,
+                      scheduleId: schedule.id,
+                      slot: Labels.slot(context, schedule),
+                      medicationActive: medication.isActive,
+                    ),
+                  const Divider(),
+                ],
               ],
             );
           },
@@ -311,9 +338,9 @@ class _MedicationDetailState extends State<_MedicationDetail> {
         if (medication.isActive) {
           final accepted = await _confirm(
             context,
-            Labels.deactivateTitle,
-            Labels.deactivateDetails,
-            Labels.deactivate,
+            context.l10n.deactivateTitle,
+            context.l10n.deactivateDetails,
+            context.l10n.deactivate,
           );
           if (!accepted || !mounted) return;
         }
@@ -325,9 +352,9 @@ class _MedicationDetailState extends State<_MedicationDetail> {
       case _MedicationAction.delete:
         final accepted = await _confirm(
           context,
-          Labels.deleteTitle,
-          Labels.deleteDetails,
-          Labels.delete,
+          context.l10n.deleteTitle,
+          context.l10n.deleteDetails,
+          context.l10n.delete,
         );
         if (!accepted || !mounted) return;
         await _save(context, () async {
@@ -339,7 +366,7 @@ class _MedicationDetailState extends State<_MedicationDetail> {
             Navigator.pop(context);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(Labels.deleteWithSchedule)),
+              SnackBar(content: Text(context.l10n.deleteWithSchedule)),
             );
           }
         });
@@ -361,6 +388,7 @@ class _MedicationDetailState extends State<_MedicationDetail> {
         minutesAfterMidnight: draft.minutesAfterMidnight,
         startsOn: draft.startsOn,
         endsBefore: draft.endsBefore,
+        label: draft.label,
       );
     });
   }
@@ -368,11 +396,11 @@ class _MedicationDetailState extends State<_MedicationDetail> {
   Future<void> _stopSchedule(MedicationSchedule schedule) async {
     final accepted = await _confirm(
       context,
-      Labels.stopScheduleTitle,
+      context.l10n.stopScheduleTitle,
       widget.medications.today.isBefore(schedule.startsOn)
-          ? Labels.cancelUpcomingSchedule
-          : Labels.stopCurrentSchedule,
-      Labels.stopSchedule,
+          ? context.l10n.cancelUpcomingSchedule
+          : context.l10n.stopCurrentSchedule,
+      context.l10n.stopSchedule,
     );
     if (!accepted || !mounted) return;
     await _save(context, () => widget.medications.stopSchedule(schedule.id));
@@ -386,18 +414,18 @@ class _IntakeHistory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text(Labels.history)),
+    appBar: AppBar(title: Text(context.l10n.history)),
     body: StreamBuilder(
       stream: entries,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Center(child: Text(Labels.loadError));
+          return Center(child: Text(context.l10n.loadError));
         }
         final rows = snapshot.data;
         if (rows == null) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (rows.isEmpty) return const Center(child: Text(Labels.noHistory));
+        if (rows.isEmpty) return Center(child: Text(context.l10n.noHistory));
         return ListView.builder(
           itemCount: rows.length,
           itemBuilder: (context, index) {
@@ -406,23 +434,28 @@ class _IntakeHistory extends StatelessWidget {
             final reported = event.reportedIntakeAt;
             return ListTile(
               title: Text(switch (event.kind) {
-                IntakeEventKind.confirmation => Labels.confirmed,
-                IntakeEventKind.correction => Labels.corrected,
+                IntakeEventKind.confirmation => context.l10n.confirmed,
+                IntakeEventKind.correction => context.l10n.corrected,
               }),
               subtitle: Text(
                 [
-                  Labels.scheduledFor(
+                  entry.details.name,
+                  ?entry.details.dosage,
+                  Labels.slot(context, entry.schedule),
+                  context.l10n.scheduledFor(
                     Labels.date(context, event.scheduledDate),
                     Labels.scheduleTime(
                       context,
                       entry.schedule.minutesAfterMidnight,
                     ),
                   ),
-                  Labels.recordedAt(
+                  context.l10n.recordedAt(
                     Labels.timestamp(context, event.recordedAt),
                   ),
                   if (reported != null)
-                    Labels.reportedAt(Labels.timestamp(context, reported)),
+                    context.l10n.reportedAt(
+                      Labels.timestamp(context, reported),
+                    ),
                 ].join('\n'),
               ),
             );
@@ -447,7 +480,9 @@ Future<_MedicationDraft?> _editMedication(
     builder: (context) => AlertDialog(
       scrollable: true,
       title: Text(
-        medication == null ? Labels.addMedication : Labels.editMedication,
+        medication == null
+            ? context.l10n.addMedication
+            : context.l10n.editMedication,
       ),
       content: Form(
         key: key,
@@ -456,17 +491,17 @@ Future<_MedicationDraft?> _editMedication(
           children: [
             TextFormField(
               initialValue: medication?.name,
-              decoration: const InputDecoration(labelText: Labels.name),
+              decoration: InputDecoration(labelText: context.l10n.name),
               autofocus: true,
               textInputAction: TextInputAction.next,
               validator: (value) => value == null || value.trim().isEmpty
-                  ? Labels.nameRequired
+                  ? context.l10n.nameRequired
                   : null,
               onSaved: (value) => name = value!,
             ),
             TextFormField(
               initialValue: medication?.dosage,
-              decoration: const InputDecoration(labelText: Labels.dosage),
+              decoration: InputDecoration(labelText: context.l10n.dosage),
               onSaved: (value) => dosage = value,
             ),
           ],
@@ -475,7 +510,7 @@ Future<_MedicationDraft?> _editMedication(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(Labels.cancel),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -487,7 +522,7 @@ Future<_MedicationDraft?> _editMedication(
               dosage: dosage,
             ));
           },
-          child: const Text(Labels.save),
+          child: Text(context.l10n.save),
         ),
       ],
     ),
@@ -508,7 +543,7 @@ Future<bool> _confirm(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(Labels.cancel),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -525,6 +560,6 @@ Future<void> _save(BuildContext context, Future<void> Function() action) async {
   } catch (_) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text(Labels.saveError)));
+        .showSnackBar(SnackBar(content: Text(context.l10n.saveError)));
   }
 }

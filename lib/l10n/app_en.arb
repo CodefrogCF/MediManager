@@ -1,0 +1,240 @@
+{
+  "@@locale": "en",
+  "app": "MediManager",
+  "today": "Today",
+  "reminders": "Reminders",
+  "enableReminders": "Enable reminders",
+  "remindersPaused": "Paused while this medication is inactive",
+  "notificationPermission": "Android notifications are disabled.",
+  "notificationSettings": "Open Android notification settings",
+  "reminderTime": "Reminder time",
+  "useScheduledTime": "Use the planned time",
+  "reminderDetails": "Reminders follow the days in the intake plan. Set a reminder time for slots without a planned time.",
+  "reminderTiming": "Android may delay reminders.",
+  "snoozeInterval": "Snooze interval",
+  "remindLater": "Remind me later",
+  "snoozeError": "Could not snooze the reminder.",
+  "archive": "Archive",
+  "medications": "Medications",
+  "active": "Active",
+  "inactive": "Inactive",
+  "noActiveMedications": "No active medications",
+  "noInactiveMedications": "No inactive medications",
+  "addMedication": "Add medication",
+  "editMedication": "Edit medication",
+  "name": "Name",
+  "nameRequired": "Enter a name.",
+  "dosage": "Dosage (optional)",
+  "save": "Save",
+  "cancel": "Cancel",
+  "loadError": "Could not load the data.",
+  "saveError": "Could not save the change.",
+  "medicationMissing": "This medication is no longer available.",
+  "activate": "Activate",
+  "deactivate": "Deactivate",
+  "deactivateTitle": "Deactivate medication?",
+  "deactivateDetails": "Current plans end today. Upcoming starts are cancelled. The intake history stays available.",
+  "delete": "Delete",
+  "deleteTitle": "Delete medication?",
+  "deleteDetails": "The medication will be permanently removed.",
+  "deleteWithSchedule": "This medication has saved plans. You can deactivate it.",
+  "schedules": "Intake plans",
+  "addSchedule": "Add plan",
+  "editSchedule": "Edit plan",
+  "noSchedules": "No current or upcoming intake plans",
+  "stopSchedule": "End plan",
+  "stopScheduleTitle": "End this intake plan?",
+  "stopCurrentSchedule": "The plan ends after today.",
+  "cancelUpcomingSchedule": "The scheduled start will be cancelled.",
+  "daily": "Daily",
+  "weekly": "Selected weekdays",
+  "selectWeekday": "Select at least one weekday.",
+  "startDate": "First day",
+  "endDate": "Last day (optional)",
+  "invalidEndDate": "The last day is before the first day.",
+  "time": "Time (optional)",
+  "noEndDate": "No end date",
+  "noTime": "No time set",
+  "removeTime": "Remove time",
+  "removeEndDate": "Remove end date",
+  "emptyToday": "There are no intakes planned for today.",
+  "emptyDate": "There are no intakes planned for this day.",
+  "previousDay": "Previous day",
+  "nextDay": "Next day",
+  "taken": "Taken",
+  "undo": "Undo",
+  "confirmedStatus": "Confirmed",
+  "unconfirmedStatus": "Unconfirmed",
+  "correctedStatus": "Corrected",
+  "eventHistory": "Intake log",
+  "backfill": "Record intake",
+  "backfilled": "Confirmed retrospectively",
+  "backfillTitle": "Record a past intake",
+  "reportedTime": "Intake time (optional)",
+  "invalidReportedTime": "This time does not exist on that day in the current time zone.",
+  "history": "Intake history",
+  "noHistory": "No intakes recorded.",
+  "confirmed": "Intake confirmed",
+  "corrected": "Confirmation undone",
+  "mondayShort": "Mon",
+  "tuesdayShort": "Tue",
+  "wednesdayShort": "Wed",
+  "thursdayShort": "Thu",
+  "fridayShort": "Fri",
+  "saturdayShort": "Sat",
+  "sundayShort": "Sun",
+  "slotLabel": "Slot name (optional)",
+  "settings": "Settings",
+  "appearance": "Appearance",
+  "themeMode": "Theme mode",
+  "systemTheme": "System",
+  "lightTheme": "Light",
+  "darkTheme": "Dark",
+  "accentColor": "Accent colour",
+  "greenAccent": "Green",
+  "blueAccent": "Blue",
+  "tealAccent": "Teal",
+  "orangeAccent": "Orange",
+  "purpleAccent": "Purple",
+  "redAccent": "Red",
+  "language": "Language",
+  "dataAndPrivacy": "Data and privacy",
+  "about": "About MediManager",
+  "localPrivacy": "Medication data stays on this device or in the browser profile. MediManager uses local storage and does not require an account or automatically upload medication data.",
+  "appProtection": "Use a device lock or a separate user profile to protect your records on a shared device.",
+  "backupPlaintext": "Backups contain readable, unencrypted health information. Choose a storage location you trust.",
+  "exportBackup": "Export backup",
+  "importBackup": "Restore backup",
+  "backupSaved": "The backup was exported.",
+  "backupDownloadStarted": "The backup download started.",
+  "backupRestored": "The backup was restored.",
+  "restoreTitle": "Replace local data?",
+  "restoreWarning": "The backup replaces your local data and settings. Export a backup of your current data first if you want to keep it.",
+  "restore": "Restore",
+  "deleteAllData": "Delete all local data",
+  "deleteAllTitle": "Delete all local data?",
+  "deleteAllWarning": "Medications, plans, intakes, reminders, and settings will be permanently removed from MediManager. Exported files stay where you saved them.",
+  "dataDeleted": "Local data was deleted.",
+  "backupInvalid": "This backup is invalid or damaged.",
+  "backupUnsupported": "This backup format version is unsupported.",
+  "backupTooLarge": "The backup exceeds 32 MiB.",
+  "backupOperationFailed": "Could not complete the data operation.",
+  "backupBusy": "Data operation in progress.",
+  "reminderChannelName": "Intake reminders",
+  "reminderChannelDescription": "Optional reminders for scheduled intakes",
+  "plannedIntake": "Scheduled intake",
+  "periodFrom": "From {start}",
+  "@periodFrom": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      }
+    }
+  },
+  "periodRange": "{start} to {end}",
+  "@periodRange": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "scheduledFor": "Planned: {date}, {time}",
+  "@scheduledFor": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "recordedAt": "Recorded: {timestamp}",
+  "@recordedAt": {
+    "placeholders": {
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+  "reportedAt": "Intake time: {timestamp}",
+  "@reportedAt": {
+    "placeholders": {
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+  "backfillDate": "Intake date: {date}",
+  "@backfillDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "minutes": "{minutes, plural, one{1 minute} other{{minutes} minutes}}",
+  "@minutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "snoozed": "Reminder snoozed for {minutes} minutes.",
+  "@snoozed": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "slotIdentity": "Plan {id}",
+  "@slotIdentity": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "actionFor": "{action} for {medication}, {slot}",
+  "@actionFor": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "medication": {
+        "type": "String"
+      },
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "backupSummary": "Backup from {date}. {medications} medications and {events} intake events.",
+  "@backupSummary": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "medications": {
+        "type": "int"
+      },
+      "events": {
+        "type": "int"
+      }
+    }
+  },
+  "appVersion": "Version {version}",
+  "@appVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  }
+}

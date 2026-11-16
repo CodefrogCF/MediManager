@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.ResultReceiver
 import android.util.Log
 import io.flutter.util.PathUtils
+import org.json.JSONObject
 import java.io.File
 import java.time.Duration
 import java.time.Instant
@@ -73,7 +74,7 @@ internal class ReminderScheduler(private val context: Context) {
         val flags = SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.NO_LOCALIZED_COLLATORS or
             SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING
         SQLiteDatabase.openDatabase(file.path, null, flags).use { database ->
-            if (database.version != 3) return false
+            if (database.version != 4) return false
             database.setForeignKeyConstraintsEnabled(true)
             val store = ReminderStore(database)
             val now = Instant.now()
@@ -132,6 +133,11 @@ internal class ReminderScheduler(private val context: Context) {
 
     private fun reconcile(store: ReminderStore, now: Instant, today: LocalDate, zone: ZoneId): Instant? {
         val allowed = canNotify(context)
+        val language by lazy { store.language() }
+        val strings by lazy { reminderStrings(language) }
+        if (Build.VERSION.SDK_INT >= 26 && notifications.getNotificationChannel(CHANNEL) != null) {
+            createChannel(strings)
+        }
         for (posted in notifications.activeNotifications) {
             val tag = posted.tag ?: continue
             if (!tag.startsWith("intake:")) continue
@@ -163,7 +169,7 @@ internal class ReminderScheduler(private val context: Context) {
             } else if (until.isAfter(now)) {
                 consider(until)
             } else {
-                show(store, plan, state.key, latest.id)
+                show(store, plan, state.key, latest.id, strings, language)
             }
         }
 
@@ -181,7 +187,7 @@ internal class ReminderScheduler(private val context: Context) {
                             consider(time)
                             break
                         }
-                        show(store, plan, key, latest.id)
+                        show(store, plan, key, latest.id, strings, language)
                     }
                 }
                 date = date.plusDays(1)
@@ -191,8 +197,11 @@ internal class ReminderScheduler(private val context: Context) {
     }
 
     @Suppress("DEPRECATION")
-    private fun show(store: ReminderStore, plan: ReminderPlan, key: ReminderKey, eventId: Long) {
-        createChannel(context)
+    private fun show(
+        store: ReminderStore, plan: ReminderPlan, key: ReminderKey, eventId: Long,
+        strings: JSONObject, language: String,
+    ) {
+        createChannel(strings)
         val token = UUID.randomUUID().toString()
         val openApp = PendingIntent.getActivity(
             context, 0,
@@ -200,23 +209,25 @@ internal class ReminderScheduler(private val context: Context) {
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val format = DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMAN)
+        val format = if (language == "en") DateTimeFormatter.ISO_LOCAL_DATE
+            else DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMAN)
         val date = key.date.format(format)
-        val time = plan.scheduledMinute?.let { String.format(Locale.GERMAN, " · %02d:%02d", it / 60, it % 60) }.orEmpty()
+        val time = plan.scheduledMinute?.let { String.format(Locale.ROOT, " · %02d:%02d", it / 60, it % 60) }.orEmpty()
+        val slot = plan.label ?: strings.getString("slotIdentity").replace("{id}", plan.id.toString())
         val publicNotification = builder()
             .setSmallIcon(R.drawable.ic_reminder)
-            .setContentTitle("MediManager")
-            .setContentText("Geplante Einnahme")
+            .setContentTitle(strings.getString("app"))
+            .setContentText(strings.getString("plannedIntake"))
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .build()
         val taken = Notification.Action.Builder(
-            null, "Genommen", actionIntent(TAKEN, key, token),
+            null, strings.getString("taken"), actionIntent(TAKEN, key, token),
         )
         if (Build.VERSION.SDK_INT >= 31) taken.setAuthenticationRequired(true)
         val notification = builder()
             .setSmallIcon(R.drawable.ic_reminder)
-            .setContentTitle(plan.name)
-            .setContentText("Geplante Einnahme am $date$time")
+            .setContentTitle(store.nameOn(key) ?: plan.name)
+            .setContentText("$slot · $date$time")
             .setCategory(Notification.CATEGORY_REMINDER)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setPublicVersion(publicNotification)
@@ -224,7 +235,7 @@ internal class ReminderScheduler(private val context: Context) {
             .setAutoCancel(true)
             .addAction(taken.build())
             .addAction(Notification.Action.Builder(
-                null, "Später erinnern", actionIntent(LATER, key, token),
+                null, strings.getString("remindLater"), actionIntent(LATER, key, token),
             ).build())
         if (Build.VERSION.SDK_INT >= 26) notification.setTimeoutAfter(Duration.ofDays(1).toMillis())
         notifications.notify(key.tag, NOTIFICATION_ID, notification.build())
@@ -260,6 +271,23 @@ internal class ReminderScheduler(private val context: Context) {
 
     fun retry() = arm(Instant.now().plusSeconds(60))
 
+    private fun reminderStrings(language: String): JSONObject = runCatching {
+        context.assets.open("flutter_assets/lib/l10n/app_$language.arb").bufferedReader().use {
+            JSONObject(it.readText())
+        }
+    }.getOrElse { throw IllegalStateException("Reminder catalog unavailable", it) }
+
+    private fun createChannel(strings: JSONObject) {
+        if (Build.VERSION.SDK_INT >= 26) {
+            val channel = NotificationChannel(
+                CHANNEL, strings.getString("reminderChannelName"), NotificationManager.IMPORTANCE_DEFAULT,
+            )
+            channel.description = strings.getString("reminderChannelDescription")
+            channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            notifications.createNotificationChannel(channel)
+        }
+    }
+
     companion object {
         const val CHANNEL = "intake_reminders"
         private const val NOTIFICATION_ID = 1
@@ -274,13 +302,5 @@ internal class ReminderScheduler(private val context: Context) {
                     manager.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE)
         }
 
-        fun createChannel(context: Context) {
-            if (Build.VERSION.SDK_INT >= 26) {
-                val channel = NotificationChannel(CHANNEL, "Einnahmeerinnerungen", NotificationManager.IMPORTANCE_DEFAULT)
-                channel.description = "Optionale Erinnerungen an geplante Einnahmen"
-                channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
-                context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-            }
-        }
     }
 }

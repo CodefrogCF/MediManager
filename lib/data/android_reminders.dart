@@ -26,7 +26,8 @@ final class AndroidReminders {
           TableUpdateQuery.onAllTables([
             _db.medications,
             _db.medicationSchedules,
-            _db.medicationReminders,
+            _db.slotReminders,
+            _db.appSettings,
             _db.intakeEvents,
           ]),
         )

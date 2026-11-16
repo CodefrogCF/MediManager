@@ -68,7 +68,7 @@ void main() {
       expect(
         (await reopened.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        3,
+        4,
       );
       final medication = (await meds.watchMedication(medicationId).first)!;
       expect(medication.name, 'Testplan');
