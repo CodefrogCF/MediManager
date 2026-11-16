@@ -9,6 +9,8 @@ typedef DailyIntake = ({
   Medication medication,
   MedicationSchedule schedule,
   ScheduledIntake intake,
+  MedicationDetail details,
+  IntakeEvent? latestEvent,
 });
 
 final class MedicationRepository {
@@ -17,7 +19,8 @@ final class MedicationRepository {
   final AppDatabase _db;
   final DateTime Function() _now;
 
-  LocalDate get today => LocalDate.fromDateTime(_now().toLocal());
+  DateTime get localNow => _now().toLocal();
+  LocalDate get today => LocalDate.fromDateTime(localNow);
 
   Stream<List<Medication>> watchMedications() =>
       (_db.select(_db.medications)..orderBy([
@@ -30,32 +33,94 @@ final class MedicationRepository {
       _medication(id).watchSingleOrNull();
 
   Future<int> createMedication({required String name, String? dosage}) {
-    return _db
-        .into(_db.medications)
-        .insert(
-          MedicationsCompanion.insert(
-            name: _requiredName(name),
-            dosage: Value(_optionalText(dosage)),
-            createdAt: _now().toUtc(),
-          ),
-        );
+    final trimmedName = _requiredName(name);
+    final trimmedDosage = _optionalText(dosage);
+    return _db.transaction(() async {
+      final id = await _db
+          .into(_db.medications)
+          .insert(
+            MedicationsCompanion.insert(
+              name: trimmedName,
+              dosage: Value(trimmedDosage),
+              createdAt: _now().toUtc(),
+            ),
+          );
+      await _saveDetails(
+        id,
+        AppDatabase.initialDetailsDate,
+        trimmedName,
+        trimmedDosage,
+      );
+      return id;
+    });
   }
 
   Future<void> updateMedication(
     int id, {
     required String name,
     String? dosage,
-  }) async {
-    final changed =
-        await (_db.update(
-          _db.medications,
-        )..where((row) => row.id.equals(id))).write(
-          MedicationsCompanion(
-            name: Value(_requiredName(name)),
-            dosage: Value(_optionalText(dosage)),
+  }) => _db.transaction(() async {
+    final trimmedName = _requiredName(name);
+    final trimmedDosage = _optionalText(dosage);
+    final medication = await _medication(id).getSingle();
+    if (medication.name == trimmedName && medication.dosage == trimmedDosage) {
+      return;
+    }
+
+    await (_db.update(
+      _db.medications,
+    )..where((row) => row.id.equals(id))).write(
+      MedicationsCompanion(
+        name: Value(trimmedName),
+        dosage: Value(trimmedDosage),
+      ),
+    );
+
+    final schedules = _db.medicationSchedules;
+    final events = _db.intakeEvents;
+    final details = _db.medicationDetails;
+    final lastRecorded =
+        await (_db.selectOnly(events).join([
+                innerJoin(schedules, schedules.id.equalsExp(events.scheduleId)),
+              ])
+              ..addColumns([events.scheduledDate])
+              ..where(schedules.medicationId.equals(id))
+              ..orderBy([OrderingTerm.desc(events.scheduledDate)])
+              ..limit(1))
+            .getSingleOrNull();
+    final latestDetails =
+        await (_db.select(details)
+              ..where((row) => row.medicationId.equals(id))
+              ..orderBy([(row) => OrderingTerm.desc(row.startsOn)])
+              ..limit(1))
+            .getSingle();
+
+    // Keep past dates and any previously recorded occurrence stable.
+    final lastDate = lastRecorded?.read(events.scheduledDate);
+    final startsOn = [
+      today,
+      if (lastDate != null) LocalDate.fromEpochDay(lastDate).plusDays(1),
+      latestDetails.startsOn,
+    ].reduce((a, b) => a.isBefore(b) ? b : a);
+    await _saveDetails(id, startsOn, trimmedName, trimmedDosage);
+  });
+
+  Future<void> _saveDetails(
+    int id,
+    LocalDate startsOn,
+    String name,
+    String? dosage,
+  ) async {
+    await _db
+        .into(_db.medicationDetails)
+        .insertOnConflictUpdate(
+          MedicationDetailsCompanion.insert(
+            medicationId: id,
+            startsOn: startsOn,
+            name: name,
+            dosage: Value(dosage),
           ),
         );
-    if (changed == 0) throw StateError('Medication no longer exists');
   }
 
   /// Only an unused medication can be permanently deleted.
@@ -96,12 +161,41 @@ final class MedicationRepository {
   Stream<List<DailyIntake>> watchDailyIntakes(LocalDate date) {
     final schedules = _db.medicationSchedules;
     final medications = _db.medications;
+    final details = _db.medicationDetails;
+    final events = _db.intakeEvents;
     final day = date.epochDay;
+    final earlierDetails = _db.alias(details, 'earlier_details');
+    final detailsDate = _db.selectOnly(earlierDetails)
+      ..addColumns([earlierDetails.startsOn])
+      ..where(
+        earlierDetails.medicationId.equalsExp(schedules.medicationId) &
+            earlierDetails.startsOn.isSmallerOrEqualValue(day),
+      )
+      ..orderBy([OrderingTerm.desc(earlierDetails.startsOn)])
+      ..limit(1);
+    final earlierEvents = _db.alias(events, 'earlier_events');
+    final latestEventId = _db.selectOnly(earlierEvents)
+      ..addColumns([earlierEvents.id])
+      ..where(
+        earlierEvents.scheduleId.equalsExp(schedules.id) &
+            earlierEvents.scheduledDate.equals(day),
+      )
+      ..orderBy([OrderingTerm.desc(earlierEvents.id)])
+      ..limit(1);
     final query =
         _db.select(schedules).join([
             innerJoin(
               medications,
               medications.id.equalsExp(schedules.medicationId),
+            ),
+            innerJoin(
+              details,
+              details.medicationId.equalsExp(schedules.medicationId) &
+                  details.startsOn.equalsExp(subqueryExpression(detailsDate)),
+            ),
+            leftOuterJoin(
+              events,
+              events.id.equalsExp(subqueryExpression(latestEventId)),
             ),
           ])
           ..where(
@@ -114,7 +208,7 @@ final class MedicationRepository {
               schedules.minutesAfterMidnight,
               nulls: NullsOrder.last,
             ),
-            OrderingTerm.asc(medications.name),
+            OrderingTerm.asc(details.name),
             OrderingTerm.asc(schedules.id),
           ]);
     return query.watch().map(
@@ -125,6 +219,8 @@ final class MedicationRepository {
               medication: row.readTable(medications),
               schedule: plan,
               intake: (scheduleId: plan.id, scheduledDate: date),
+              details: row.readTable(details),
+              latestEvent: row.readTableOrNull(events),
             ),
       ],
     );

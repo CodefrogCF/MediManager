@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -17,6 +19,17 @@ class Medications extends Table {
 
   @override
   List<String> get customConstraints => ['CHECK (length(trim(name)) > 0)'];
+}
+
+class MedicationDetails extends Table {
+  IntColumn get medicationId =>
+      integer().references(Medications, #id, onDelete: KeyAction.cascade)();
+  IntColumn get startsOn => integer().map(const _LocalDateConverter())();
+  TextColumn get name => text()();
+  TextColumn get dosage => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {medicationId, startsOn};
 }
 
 @UseRowClass(MedicationSchedule)
@@ -59,6 +72,8 @@ class IntakeEvents extends Table {
   IntColumn get scheduledDate => integer().map(const _LocalDateConverter())();
   TextColumn get kind => textEnum<IntakeEventKind>()();
   IntColumn get recordedAt => integer().map(const _UtcTimestampConverter())();
+  IntColumn get recordedOn =>
+      integer().nullable().map(const _LocalDateConverter())();
   IntColumn get reportedIntakeAt =>
       integer().nullable().map(const _UtcTimestampConverter())();
 
@@ -69,9 +84,14 @@ class IntakeEvents extends Table {
   ];
 }
 
-@DriftDatabase(tables: [Medications, MedicationSchedules, IntakeEvents])
+@DriftDatabase(
+  tables: [Medications, MedicationDetails, MedicationSchedules, IntakeEvents],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
+
+  // The initial details apply to every existing occurrence of a medication.
+  static const initialDetailsDate = LocalDate.fromEpochDay(-100000000);
 
   AppDatabase.open()
     : this(
@@ -80,15 +100,41 @@ class AppDatabase extends _$AppDatabase {
           web: DriftWebOptions(
             sqlite3Wasm: Uri.parse('sqlite3.wasm'),
             driftWorker: Uri.parse('drift_worker.js'),
+            onResult: (result) {
+              final storage = result.chosenImplementation;
+              if (storage == WasmStorageImplementation.inMemory ||
+                  storage == WasmStorageImplementation.unsafeIndexedDb) {
+                unawaited(result.resolvedExecutor.close());
+                throw UnsupportedError(
+                  'Reliable browser storage is unavailable',
+                );
+              }
+            },
           ),
         ),
       );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from != 1 || to != 2) {
+        throw UnsupportedError('Unsupported database migration $from to $to');
+      }
+      await transaction(() async {
+        await m.createTable(medicationDetails);
+        await customStatement(
+          '''
+          INSERT INTO medication_details (medication_id, starts_on, name, dosage)
+          SELECT id, ?, name, dosage FROM medications
+          ''',
+          [initialDetailsDate.epochDay],
+        );
+        await m.addColumn(intakeEvents, intakeEvents.recordedOn);
+      });
+    },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
 }

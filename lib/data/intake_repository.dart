@@ -42,23 +42,24 @@ final class IntakeRepository {
   Future<int> confirm(ScheduledIntake intake, {DateTime? reportedIntakeAt}) =>
       _append(intake, IntakeEventKind.confirmation, reportedIntakeAt);
 
-  Future<int> correct(ScheduledIntake intake) =>
-      _append(intake, IntakeEventKind.correction, null);
+  Future<int> correct(ScheduledIntake intake, {int? expectedConfirmationId}) =>
+      _append(intake, IntakeEventKind.correction, null, expectedConfirmationId);
 
   Future<int> _append(
     ScheduledIntake intake,
     IntakeEventKind kind,
-    DateTime? reportedIntakeAt,
-  ) => _db.transaction(() async {
+    DateTime? reportedIntakeAt, [
+    int? expectedConfirmationId,
+  ]) => _db.transaction(() async {
     final now = _now();
+    final recordedOn = LocalDate.fromDateTime(now.toLocal());
     final schedule = await (_db.select(
       _db.medicationSchedules,
     )..where((row) => row.id.equals(intake.scheduleId))).getSingleOrNull();
     if (schedule == null ||
         !schedule.occursOn(intake.scheduledDate) ||
         (kind == IntakeEventKind.confirmation &&
-            LocalDate.fromDateTime(now.toLocal())
-                .isBefore(intake.scheduledDate))) {
+            recordedOn.isBefore(intake.scheduledDate))) {
       throw ArgumentError('The intake is not scheduled for this date');
     }
     final last =
@@ -66,8 +67,10 @@ final class IntakeRepository {
               ..orderBy([(row) => OrderingTerm.desc(row.id)])
               ..limit(1))
             .getSingleOrNull();
-    final isConfirmed = last?.kind == IntakeEventKind.confirmation;
-    if (isConfirmed == (kind == IntakeEventKind.confirmation)) {
+    final isConfirmed = last?.isConfirmation ?? false;
+    if (isConfirmed == (kind == IntakeEventKind.confirmation) ||
+        (expectedConfirmationId != null &&
+            last?.id != expectedConfirmationId)) {
       throw StateError(
         'The intake already has the requested confirmation state',
       );
@@ -81,6 +84,7 @@ final class IntakeRepository {
             scheduledDate: intake.scheduledDate,
             kind: kind,
             recordedAt: now.toUtc(),
+            recordedOn: Value(recordedOn),
             reportedIntakeAt: Value(reportedIntakeAt?.toUtc()),
           ),
         );

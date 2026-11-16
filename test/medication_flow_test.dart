@@ -37,7 +37,7 @@ void main() {
       expect(find.text('Heute sind keine Einnahmen geplant.'), findsOneWidget);
       expect(find.text('Sonntagspräparat'), findsNothing);
 
-      await tester.tap(find.byType(NavigationDestination).last);
+      await tester.tap(find.text('Medikamente'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Medikament hinzufügen'));
       await tester.pumpAndSettle();
@@ -84,20 +84,12 @@ void main() {
       expect(find.text('Sonntagspräparat'), findsNothing);
       expect(find.text('Einnahme bestätigt'), findsNothing);
 
-      await tester.runAsync(() async {
-        final date = medications.today;
-        final schedules = await db.select(db.medicationSchedules).get();
-        final scheduled = (
-          scheduleId: schedules
-              .singleWhere((schedule) => schedule.occursOn(date))
-              .id,
-          scheduledDate: date,
-        );
-        await intakes.confirm(scheduled);
-        await intakes.correct(scheduled);
-      });
+      await tester.tap(find.text('Genommen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rückgängig'));
+      await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(NavigationDestination).last);
+      await tester.tap(find.text('Medikamente'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Freitagspräparat'));
       await tester.pumpAndSettle();

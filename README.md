@@ -17,3 +17,14 @@ understandable across days, application restarts, and
 medication schedule changes.
 
 Reminders are optional. Reliable intake tracking is not.
+
+## Web build
+
+Run `flutter run -d chrome` for development. The app bundles Roboto
+for both development and release.
+
+Run `flutter build web --no-web-resources-cdn` to bundle the renderer
+with the release. Serve `build/web` from HTTPS or
+localhost, including `sqlite3.wasm` and `drift_worker.js`. The browser
+caches the app after the initial visit and keeps intake data in SQLite
+storage scoped to that browser profile and origin.

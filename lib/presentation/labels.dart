@@ -6,6 +6,7 @@ import '../domain/medication.dart';
 abstract final class Labels {
   static const app = 'MediManager';
   static const today = 'Heute';
+  static const archive = 'Verlauf';
   static const medications = 'Medikamente';
   static const active = 'Aktiv';
   static const inactive = 'Inaktiv';
@@ -53,6 +54,21 @@ abstract final class Labels {
   static const removeTime = 'Uhrzeit entfernen';
   static const removeEndDate = 'Enddatum entfernen';
   static const emptyToday = 'Heute sind keine Einnahmen geplant.';
+  static const emptyDate = 'Für diesen Tag sind keine Einnahmen geplant.';
+  static const previousDay = 'Vorheriger Tag';
+  static const nextDay = 'Nächster Tag';
+  static const taken = 'Genommen';
+  static const undo = 'Rückgängig';
+  static const confirmedStatus = 'Bestätigt';
+  static const unconfirmedStatus = 'Nicht bestätigt';
+  static const correctedStatus = 'Korrigiert';
+  static const eventHistory = 'Protokoll der Einnahme';
+  static const backfill = 'Nachtragen';
+  static const backfilled = 'Nachträglich bestätigt';
+  static const backfillTitle = 'Einnahme nachtragen';
+  static const reportedTime = 'Einnahmezeit (optional)';
+  static const invalidReportedTime =
+      'Diese Uhrzeit gibt es an diesem Tag in der aktuellen Zeitzone nicht.';
   static const history = 'Einnahmeverlauf';
   static const noHistory = 'Keine Einnahmen erfasst.';
   static const confirmed = 'Einnahme bestätigt';
@@ -90,4 +106,5 @@ abstract final class Labels {
   static String scheduledFor(String date, String time) => 'Plan: $date, $time';
   static String recordedAt(String timestamp) => 'Erfasst: $timestamp';
   static String reportedAt(String timestamp) => 'Einnahmezeit: $timestamp';
+  static String backfillDate(String date) => 'Einnahmedatum: $date';
 }
