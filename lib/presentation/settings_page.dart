@@ -5,6 +5,9 @@ import '../data/backup_repository.dart';
 import '../data/settings_repository.dart';
 import 'data_privacy_page.dart';
 import 'labels.dart';
+import 'privacy_policy_page.dart';
+
+const _appVersion = '1.0.0';
 
 enum AppAccent {
   green(Color(0xFF00A331)),
@@ -120,7 +123,21 @@ class SettingsPage extends StatelessWidget {
               _Heading(l10n.about),
               ListTile(
                 title: Text(l10n.app),
-                subtitle: Text(l10n.appVersion('0.3.0')),
+                subtitle: Text(l10n.appVersion(_appVersion)),
+              ),
+              ListTile(
+                title: Text(l10n.privacyPolicy),
+                onTap: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
+                ),
+              ),
+              ListTile(
+                title: Text(l10n.licenses),
+                onTap: () => showLicensePage(
+                  context: context,
+                  applicationName: l10n.app,
+                  applicationVersion: _appVersion,
+                ),
               ),
             ],
           );

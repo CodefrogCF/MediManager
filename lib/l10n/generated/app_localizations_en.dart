@@ -314,6 +314,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get about => 'About MediManager';
 
   @override
+  String get privacyPolicy => 'Privacy policy and limitations';
+
+  @override
+  String get licenses => 'Open-source licences';
+
+  @override
+  String get policyData =>
+      'MediManager stores the medications, doses, schedules, confirmations, corrections, and preferences you enter. Its operator is CodefrogCF.';
+
+  @override
+  String get policyNotifications =>
+      'Optional Android reminders use notification permission and can include medication names. The Android notification settings control what is visible on the lock screen. Reboot access lets Android re-arm reminders.';
+
+  @override
+  String get policyWeb =>
+      'The web host receives normal page requests, which can include your IP address. Your medication records stay in the site\'s browser storage. After the web app has loaded and cached its files, tracking works offline.';
+
+  @override
+  String get policyDeletion =>
+      'Use Settings → Data and privacy to delete local records or export and restore them. Android system backup is disabled. Downloads and files you save or share remain in their chosen locations.';
+
+  @override
+  String get policyMedicalLimitations =>
+      'MediManager records your confirmations. An unconfirmed slot has no current confirmation. MediManager cannot verify physical ingestion or provide medical advice, including advice about missed or repeated doses.';
+
+  @override
+  String get policyContact =>
+      'For privacy questions, contact CodefrogCF through the MediManager repository on GitHub. Keep personal medication information out of public issues.';
+
+  @override
   String get localPrivacy =>
       'Medication data stays on this device or in the browser profile. MediManager uses local storage and does not require an account or automatically upload medication data.';
 

@@ -19,6 +19,14 @@ import 'presentation/settings_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks([
+      'MediManager',
+    ], await rootBundle.loadString('LICENSE'));
+    yield LicenseEntryWithLineBreaks([
+      'Roboto',
+    ], await rootBundle.loadString('assets/fonts/Roboto-LICENSE.txt'));
+  });
   final database = AppDatabase.open();
   final android = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   runApp(

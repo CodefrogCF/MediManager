@@ -315,6 +315,36 @@ class AppLocalizationsDe extends AppLocalizations {
   String get about => 'Über MediManager';
 
   @override
+  String get privacyPolicy => 'Datenschutz und medizinische Grenzen';
+
+  @override
+  String get licenses => 'Open-Source-Lizenzen';
+
+  @override
+  String get policyData =>
+      'MediManager speichert Medikamente, Dosierungen, Pläne, Bestätigungen, Korrekturen und Einstellungen, die du eingibst. Betreiber ist CodefrogCF.';
+
+  @override
+  String get policyNotifications =>
+      'Optionale Android-Erinnerungen nutzen die Benachrichtigungsberechtigung und können Medikamentennamen anzeigen. Die Android-Einstellungen bestimmen, was auf dem Sperrbildschirm sichtbar ist. Nach einem Neustart kann Android Erinnerungen neu planen.';
+
+  @override
+  String get policyWeb =>
+      'Der Webhost erhält gewöhnliche Seitenanfragen, die deine IP-Adresse enthalten können. Medikamentendaten bleiben im Browserspeicher der Website. Nach dem Laden und Zwischenspeichern der App funktioniert die Erfassung offline.';
+
+  @override
+  String get policyDeletion =>
+      'Unter Einstellungen → Daten und Datenschutz kannst du lokale Daten löschen, exportieren oder wiederherstellen. Die Android-Systemsicherung ist deaktiviert. Heruntergeladene, gespeicherte oder geteilte Dateien bleiben am gewählten Speicherort.';
+
+  @override
+  String get policyMedicalLimitations =>
+      'MediManager speichert deine Bestätigungen. Bei einem unbestätigten Zeitpunkt liegt keine gültige Bestätigung vor. MediManager kann die tatsächliche Einnahme nicht prüfen und gibt keine medizinischen Ratschläge, auch nicht zu vergessenen oder wiederholten Einnahmen.';
+
+  @override
+  String get policyContact =>
+      'Bei Datenschutzfragen erreichst du CodefrogCF über das MediManager-Repository auf GitHub. Veröffentliche keine persönlichen Medikamentendaten in öffentlichen Issues.';
+
+  @override
   String get localPrivacy =>
       'Medikamentendaten bleiben auf diesem Gerät oder im Browserprofil. MediManager benötigt kein Konto und lädt keine Medikamentendaten automatisch hoch.';
 

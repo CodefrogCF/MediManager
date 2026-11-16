@@ -698,6 +698,54 @@ abstract class AppLocalizations {
   /// **'About MediManager'**
   String get about;
 
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy and limitations'**
+  String get privacyPolicy;
+
+  /// No description provided for @licenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licences'**
+  String get licenses;
+
+  /// No description provided for @policyData.
+  ///
+  /// In en, this message translates to:
+  /// **'MediManager stores the medications, doses, schedules, confirmations, corrections, and preferences you enter. Its operator is CodefrogCF.'**
+  String get policyData;
+
+  /// No description provided for @policyNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional Android reminders use notification permission and can include medication names. The Android notification settings control what is visible on the lock screen. Reboot access lets Android re-arm reminders.'**
+  String get policyNotifications;
+
+  /// No description provided for @policyWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'The web host receives normal page requests, which can include your IP address. Your medication records stay in the site\'s browser storage. After the web app has loaded and cached its files, tracking works offline.'**
+  String get policyWeb;
+
+  /// No description provided for @policyDeletion.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Settings → Data and privacy to delete local records or export and restore them. Android system backup is disabled. Downloads and files you save or share remain in their chosen locations.'**
+  String get policyDeletion;
+
+  /// No description provided for @policyMedicalLimitations.
+  ///
+  /// In en, this message translates to:
+  /// **'MediManager records your confirmations. An unconfirmed slot has no current confirmation. MediManager cannot verify physical ingestion or provide medical advice, including advice about missed or repeated doses.'**
+  String get policyMedicalLimitations;
+
+  /// No description provided for @policyContact.
+  ///
+  /// In en, this message translates to:
+  /// **'For privacy questions, contact CodefrogCF through the MediManager repository on GitHub. Keep personal medication information out of public issues.'**
+  String get policyContact;
+
   /// No description provided for @localPrivacy.
   ///
   /// In en, this message translates to:

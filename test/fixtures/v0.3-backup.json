@@ -1,0 +1,84 @@
+{
+  "format": "medimanager-backup",
+  "version": 1,
+  "sha256": "924e636a4aa12bb0beb0e4672bb841a1ccfc32d3357c541667d7637f9971b63f",
+  "payload": {
+    "exported_at": "2026-04-04T09:00:00.000000Z",
+    "tables": {
+      "medications": [
+        {
+          "id": 7,
+          "name": "Vitamin D",
+          "dosage": "Example dose",
+          "is_active": true,
+          "created_at": "2026-04-01T07:00:00.000000Z"
+        }
+      ],
+      "medication_details": [
+        {
+          "medication_id": 7,
+          "starts_on": "-271821-04-20",
+          "name": "Vitamin D",
+          "dosage": "Example dose"
+        }
+      ],
+      "medication_schedules": [
+        {
+          "id": 11,
+          "medication_id": 7,
+          "recurrence": 0,
+          "minutes_after_midnight": 480,
+          "starts_on": "2026-04-01",
+          "ends_before": null,
+          "label": "Morning"
+        },
+        {
+          "id": 12,
+          "medication_id": 7,
+          "recurrence": 0,
+          "minutes_after_midnight": 1080,
+          "starts_on": "2026-04-01",
+          "ends_before": null,
+          "label": "Evening"
+        }
+      ],
+      "intake_events": [
+        {
+          "id": 21,
+          "schedule_id": 11,
+          "scheduled_date": "2026-04-03",
+          "kind": "confirmation",
+          "recorded_at": "2026-04-03T08:01:00.123456Z",
+          "recorded_on": "2026-04-03",
+          "reported_intake_at": null
+        },
+        {
+          "id": 22,
+          "schedule_id": 11,
+          "scheduled_date": "2026-04-03",
+          "kind": "correction",
+          "recorded_at": "2026-04-03T08:05:00.000000Z",
+          "recorded_on": "2026-04-03",
+          "reported_intake_at": null
+        }
+      ],
+      "slot_reminders": [
+        {
+          "schedule_id": 12,
+          "enabled": true,
+          "reminder_minute": 1065,
+          "snooze_minutes": 30,
+          "changed_at": "2026-04-01T08:00:00.000000Z"
+        }
+      ],
+      "app_settings": [
+        {
+          "id": 1,
+          "theme_mode": "dark",
+          "accent": "teal",
+          "language": "en"
+        }
+      ]
+    }
+  }
+}

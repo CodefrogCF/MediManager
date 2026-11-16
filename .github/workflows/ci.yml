@@ -1,0 +1,92 @@
+name: MediManager CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.0'
+          cache: true
+
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Verify generated code
+        run: |
+          flutter gen-l10n
+          dart run build_runner build
+          git diff --exit-code -- lib/data/app_database.g.dart lib/l10n/generated
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze --no-pub
+
+      - name: Run automated tests
+        run: flutter test --no-pub
+
+      - name: Build offline web release
+        run: flutter build web --release --no-web-resources-cdn --no-pub
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: medimanager-web
+          path: build/web/
+          if-no-files-found: error
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Install Flutter's Android NDK version
+        run: sdkmanager 'ndk;28.2.13676358'
+
+      - name: Build unsigned Android bundle
+        run: flutter build appbundle --release --no-pub
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: medimanager-android-unsigned
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Build an installable Android QA APK
+        run: |
+          qa_signing_dir="$(mktemp -d "$RUNNER_TEMP/medimanager-qa.XXXXXX")"
+          keytool -genkeypair -noprompt -storetype PKCS12 \
+            -keystore "$qa_signing_dir/qa.p12" -alias medimanager-qa \
+            -storepass medimanager-qa -keypass medimanager-qa \
+            -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=MediManager CI QA'
+          cat > "$qa_signing_dir/signing.properties" <<'EOF'
+          storeFile=qa.p12
+          storePassword=medimanager-qa
+          keyAlias=medimanager-qa
+          keyPassword=medimanager-qa
+          EOF
+          MEDIMANAGER_SIGNING_PROPERTIES="$qa_signing_dir/signing.properties" \
+            flutter build apk --release --no-pub
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: medimanager-android-qa-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

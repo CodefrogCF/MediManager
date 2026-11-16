@@ -1,74 +1,79 @@
 # MediManager
 
-## Core Design Principle
+MediManager is a local medication intake log for Android and the web. It helps
+you answer “Did I confirm taking this medication on that date?” You can use
+it offline and without an account.
 
-MediManager is not primarily a medication reminder app.
+## Track an intake
 
-Its primary purpose is to provide a reliable record of
-whether a user explicitly confirmed taking a medication.
+1. Open **Medications** and add a medication with a name and optional dose
+   description. Add a daily or weekday plan for each intake slot. Name slots
+   such as Morning and Evening to tell them apart.
+2. In **Today**, choose **Taken** after an intake you want to confirm. Each
+   slot is independent. Choose **Undo** to reverse a confirmation and keep
+   both actions in the log.
+3. Open **Archive** and pick a date to see the plans, historical dose labels,
+   and confirmation times for that day. Choose **Record intake** to add a
+   past confirmation. The archive shows when you recorded it and, if you
+   supply one, the reported intake time.
 
-A dismissed notification is not an intake confirmation.
-
-An unconfirmed intake does not necessarily mean that
-the medication was not taken.
-
-Intake history must remain accessible, accurate, and
-understandable across days, application restarts, and
-medication schedule changes.
-
-Reminders are optional. Reliable intake tracking is not.
+**Unconfirmed** means a slot has no current confirmation. MediManager cannot
+verify physical ingestion and provides no medical advice, including guidance
+on missed or repeated doses. Consult a qualified healthcare professional about
+medication decisions.
 
 ## Android reminders
 
-Add separate intake plans for the same medication, for example morning
-and evening, with optional labels. Each plan has its own confirmations,
-history, and **Erinnerungen** settings in the medication details. Reminders
-follow the plan's days and use its time or a custom reminder time. Each
-slot has its own snooze interval.
+Open a medication's details and choose **Reminders** under a slot. Reminders
+follow that slot's weekdays and use its scheduled time or a custom reminder
+time. **Taken** records a confirmation. Opening, swiping away, or snoozing a
+reminder leaves the intake log unchanged. Tracking remains available when
+Android notification permission is denied and in the web app.
 
-**Genommen** records a confirmation. Opening, dismissing, or postponing
-a notification leaves the intake log unchanged. Android may delay
-alarms during battery saving or Doze. Reminders are rebuilt after
-reboot, schedule changes, or a change to the local clock or time zone.
-A snooze can carry across midnight and expires if it is over 24 hours overdue.
-Tracking is available with notifications disabled and in the web app.
+Android may delay reminders during battery saving or Doze. Reminders are
+rebuilt after reboot, schedule changes, and local clock or time zone changes.
+Open the app after an update to migrate any older database. Open it again
+after an Android force-stop to let Android resume scheduling.
 
-## Settings and local data
+## Back up, restore, or delete data
 
-Open **Einstellungen** / **Settings** from the toolbar to choose German
-or English, follow the system appearance or use a light or dark theme,
-and select an accent colour.
+Open **Settings** → **Data and privacy**.
 
-**Daten und Datenschutz** / **Data and privacy** lets you export, restore,
-and delete local data. Backups are readable UTF-8 JSON containing medication
-details, schedule versions, reminder preferences, intake events, and
-appearance and language settings. The versioned format includes a SHA-256
-checksum of the JSON payload. The 32 MiB limit applies to export and import.
-Backups are unencrypted and contain health information. Android uses the
-system file picker. On the web, exports go to the browser's downloads.
+- **Export backup** saves a readable JSON file with your medication history,
+  plans, reminders, and preferences. Android opens a system file picker. Web
+  exports appear in your browser downloads. Files are unencrypted and can
+  contain sensitive health information.
+- **Restore backup** checks the version, integrity, and contents of a selected
+  JSON file up to 32 MiB. Review the preview before confirming replacement of
+  your current data. Export your current data first if you want to retain it.
+  Android rebuilds eligible reminders after restore.
+- **Delete all local data** clears the app's records and preferences after
+  confirmation. Remove exported files separately from their saved locations.
 
-Restore shows a preview and requires confirmation before replacing the local
-database. A failed restore leaves the previous data available. Device-specific
-notification tokens and snoozes are cleared, and Android rebuilds eligible
-reminders from the restored settings. Deletion requires confirmation and
-clears the app's records and preferences. Exported files stay at their chosen
-locations.
+Android stores records in the app sandbox and disables Android system
+backup. The web app stores records in the current browser profile and site
+origin. Clearing that site's data or using another origin affects access to
+that copy. A device lock or separate user profile can protect records on
+shared devices. See the [privacy policy](web/privacy.html) for data and
+permission details.
 
-MediManager stores medication records in the Android app sandbox or under the
-web app's origin in the current browser profile. The app uses no accounts,
-analytics, or automatic uploads. Clearing browser site data removes that
-copy. For a shared device, use the device screen lock or a separate OS or
-browser profile. An app-level PIN would add a second lock and would leave
-exported files outside its protection. MediManager uses the existing device
-or profile controls.
+## Build and release
 
-## Web build
+This repository uses Flutter and Dart with local SQLite through Drift. The
+Android app supports API 24 and later. Serve a web release from HTTPS or
+localhost, including `sqlite3.wasm` and `drift_worker.js`. The app caches
+its files on first use so later visits can work offline. Use a browser profile
+that permits persistent site storage. Browser privacy modes and site policies
+can prevent that storage from being available.
 
-Run `flutter run -d chrome` for development. The app bundles Roboto
-for both development and release.
+```sh
+flutter pub get
+flutter gen-l10n
+dart run build_runner build
+flutter analyze
+flutter test
+flutter build web --no-web-resources-cdn
+```
 
-Run `flutter build web --no-web-resources-cdn` to bundle the renderer
-with the release. Serve `build/web` from HTTPS or
-localhost, including `sqlite3.wasm` and `drift_worker.js`. The browser
-caches the app after the initial visit and keeps intake data in SQLite
-storage scoped to that browser profile and origin.
+See [release preparation and validation](docs/release.md), [release notes](CHANGELOG.md),
+and the [MIT licence](LICENSE).

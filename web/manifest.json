@@ -1,12 +1,11 @@
 {
-    "name": "medimanager",
-    "short_name": "medimanager",
+    "name": "MediManager",
+    "short_name": "MediManager",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F4FBF2",
+    "theme_color": "#00A331",
+    "description": "Offline medication intake tracking with an archive of your confirmations.",
     "prefer_related_applications": false,
     "icons": [
         {
