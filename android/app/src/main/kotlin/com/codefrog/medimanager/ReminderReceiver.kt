@@ -261,13 +261,33 @@ internal class ReminderScheduler(private val context: Context) {
         )
 
     private fun arm(next: Instant?) {
-        val operation = PendingIntent.getBroadcast(
-            context, 1, Intent(context, ReminderReceiver::class.java).setAction(ReminderReceiver.REFRESH),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        if (next == null) alarms.cancel(operation)
-        else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toEpochMilli(), operation)
+        val fallback = refreshAlarm(1)
+        val exact = refreshAlarm(2)
+        if (next == null) {
+            alarms.cancel(fallback)
+            alarms.cancel(exact)
+            return
+        }
+
+        val trigger = next.toEpochMilli()
+        // Android cancels exact alarms when access is revoked. Keep the next
+        // inexact alarm armed so reminders can still run without opening the app.
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, fallback)
+        if (canScheduleExact(context)) {
+            try {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, exact)
+                return
+            } catch (_: SecurityException) {
+                // Access can change between checking and arming the alarm.
+            }
+        }
+        alarms.cancel(exact)
     }
+
+    private fun refreshAlarm(requestCode: Int): PendingIntent = PendingIntent.getBroadcast(
+        context, requestCode, Intent(context, ReminderReceiver::class.java).setAction(ReminderReceiver.REFRESH),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     fun retry() = arm(Instant.now().plusSeconds(60))
 
@@ -294,6 +314,9 @@ internal class ReminderScheduler(private val context: Context) {
         private const val TAKEN = "com.codefrog.medimanager.REMINDER_TAKEN"
         private const val LATER = "com.codefrog.medimanager.REMINDER_LATER"
         private const val TOKEN = "token"
+
+        fun canScheduleExact(context: Context): Boolean =
+            Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
         fun canNotify(context: Context): Boolean {
             val manager = context.getSystemService(NotificationManager::class.java)

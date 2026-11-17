@@ -195,9 +195,15 @@ void main() {
       final messenger = tester.binding.defaultBinaryMessenger;
       final calls = <MethodCall>[];
       var permission = false;
+      var exactAlarms = false;
       messenger.setMockMethodCallHandler(channel, (call) async {
         calls.add(call);
-        return call.method == 'snooze' || permission;
+        return switch (call.method) {
+          'canScheduleExactAlarms' => exactAlarms,
+          'exactAlarmSettings' => null,
+          'snooze' => true,
+          _ => permission,
+        };
       });
       addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       final db = AppDatabase(NativeDatabase.memory());
@@ -241,6 +247,19 @@ void main() {
       await tap(find.text('Vitamin D'));
       await tap(find.text('Erinnerungen'));
       await tap(find.text('Erinnerungen aktivieren'));
+      final allowPreciseReminders = find.text(
+        'Pünktliche Erinnerungen erlauben',
+      );
+      await tester.ensureVisible(allowPreciseReminders);
+      await tap(allowPreciseReminders);
+      expect(
+        calls.where((call) => call.method == 'exactAlarmSettings'),
+        hasLength(1),
+      );
+      exactAlarms = true;
+      reminders.resume();
+      await tester.pumpAndSettle();
+      expect(allowPreciseReminders, findsNothing);
       await tap(find.widgetWithText(FilledButton, 'Speichern'));
       expect(
         calls.where((call) => call.method == 'requestPermission'),

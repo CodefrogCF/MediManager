@@ -41,7 +41,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Reminders follow the days in the intake plan. Set a reminder time for slots without a planned time.';
 
   @override
-  String get reminderTiming => 'Android may delay reminders.';
+  String get reminderTiming =>
+      'Android may delay notifications without Alarms & reminders access.';
+
+  @override
+  String get allowPreciseReminders => 'Allow on-time reminders';
 
   @override
   String get snoozeInterval => 'Snooze interval';
@@ -328,7 +332,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get policyNotifications =>
-      'Optional Android reminders use notification permission and can include medication names. The Android notification settings control what is visible on the lock screen. Reboot access lets Android re-arm reminders.';
+      'Optional Android reminders use notification permission and can include medication names. You can grant Alarms & reminders access for more precise delivery. The Android notification settings control what is visible on the lock screen. Reboot access lets Android re-arm reminders.';
 
   @override
   String get policyWeb =>

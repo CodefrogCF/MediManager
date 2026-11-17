@@ -161,8 +161,14 @@ abstract class AppLocalizations {
   /// No description provided for @reminderTiming.
   ///
   /// In en, this message translates to:
-  /// **'Android may delay reminders.'**
+  /// **'Android may delay notifications without Alarms & reminders access.'**
   String get reminderTiming;
+
+  /// No description provided for @allowPreciseReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow on-time reminders'**
+  String get allowPreciseReminders;
 
   /// No description provided for @snoozeInterval.
   ///
@@ -725,7 +731,7 @@ abstract class AppLocalizations {
   /// No description provided for @policyNotifications.
   ///
   /// In en, this message translates to:
-  /// **'Optional Android reminders use notification permission and can include medication names. The Android notification settings control what is visible on the lock screen. Reboot access lets Android re-arm reminders.'**
+  /// **'Optional Android reminders use notification permission and can include medication names. You can grant Alarms & reminders access for more precise delivery. The Android notification settings control what is visible on the lock screen. Reboot access lets Android re-arm reminders.'**
   String get policyNotifications;
 
   /// No description provided for @policyWeb.

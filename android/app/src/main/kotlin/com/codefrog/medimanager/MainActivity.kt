@@ -2,6 +2,7 @@ package com.codefrog.medimanager
 
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -73,6 +74,18 @@ class MainActivity : FlutterActivity() {
                         result.success(ReminderScheduler.canNotify(this))
                     }
                     "requestPermission" -> requestReminderPermission(result)
+                    "canScheduleExactAlarms" -> result.success(ReminderScheduler.canScheduleExact(this))
+                    "exactAlarmSettings" -> {
+                        if (Build.VERSION.SDK_INT >= 31) {
+                            val app = Uri.parse("package:$packageName")
+                            try {
+                                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, app))
+                            } catch (_: ActivityNotFoundException) {
+                                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, app))
+                            }
+                        }
+                        result.success(null)
+                    }
                     "settings" -> {
                         val settings = if (Build.VERSION.SDK_INT >= 26) {
                             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)

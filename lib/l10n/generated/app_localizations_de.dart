@@ -42,7 +42,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Erinnerungen folgen den Tagen des Einnahmeplans. Pläne ohne Uhrzeit brauchen eine eigene Erinnerungszeit.';
 
   @override
-  String get reminderTiming => 'Android kann Erinnerungen verzögern.';
+  String get reminderTiming =>
+      'Ohne Zugriff auf „Alarme und Erinnerungen“ kann Android Benachrichtigungen verzögern.';
+
+  @override
+  String get allowPreciseReminders => 'Pünktliche Erinnerungen erlauben';
 
   @override
   String get snoozeInterval => 'Dauer der Verschiebung';
@@ -329,7 +333,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get policyNotifications =>
-      'Optionale Android-Erinnerungen nutzen die Benachrichtigungsberechtigung und können Medikamentennamen anzeigen. Die Android-Einstellungen bestimmen, was auf dem Sperrbildschirm sichtbar ist. Nach einem Neustart kann Android Erinnerungen neu planen.';
+      'Optionale Android-Erinnerungen nutzen die Benachrichtigungsberechtigung und können Medikamentennamen anzeigen. Mit Zugriff auf „Alarme und Erinnerungen“ kann Android sie genauer zustellen. Die Android-Einstellungen bestimmen, was auf dem Sperrbildschirm sichtbar ist. Nach einem Neustart kann Android Erinnerungen neu planen.';
 
   @override
   String get policyWeb =>

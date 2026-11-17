@@ -30,10 +30,15 @@ time. **Taken** records a confirmation. Opening, swiping away, or snoozing a
 reminder leaves the intake log unchanged. Tracking remains available when
 Android notification permission is denied and in the web app.
 
-Android may delay reminders during battery saving or Doze. Reminders are
-rebuilt after reboot, schedule changes, and local clock or time zone changes.
-Open the app after an update to migrate any older database. Open it again
-after an Android force-stop to let Android resume scheduling.
+Reminders can run while MediManager is closed. On Android 12 and later, use
+**Settings → Allow on-time reminders** to grant **Alarms & reminders** access.
+With this access, MediManager schedules precise wake-up alarms. Android may
+still delay delivery during battery saving or Doze. Without it, reminders use
+Android's inexact background scheduling.
+
+Reminders are rebuilt after reboot, schedule changes, and local clock or time
+zone changes. Open the app after an update to migrate any older database.
+Open it again after an Android force-stop to let Android resume scheduling.
 
 ## Back up, restore, or delete data
 

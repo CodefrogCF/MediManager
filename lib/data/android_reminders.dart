@@ -17,6 +17,7 @@ final class AndroidReminders {
   final AppDatabase _db;
   final ReminderRepository settings;
   final permission = ValueNotifier<bool>(false);
+  final exactAlarmsAllowed = ValueNotifier<bool>(true);
   StreamSubscription<Set<TableUpdate>>? _updates;
   bool _disposed = false;
 
@@ -51,6 +52,9 @@ final class AndroidReminders {
       return;
     }
     await _updatePermission('refresh');
+    if (_disposed) return;
+    final exact = await _invoke<bool>('canScheduleExactAlarms');
+    if (!_disposed && exact != null) exactAlarmsAllowed.value = exact;
   }
 
   Future<void> requestPermission() => _updatePermission('requestPermission');
@@ -62,6 +66,8 @@ final class AndroidReminders {
   }
 
   Future<void> openSettings() async => _invoke<void>('settings');
+  Future<void> openExactAlarmSettings() async =>
+      _invoke<void>('exactAlarmSettings');
 
   Future<bool> snooze(ScheduledIntake intake, int latestEventId) async =>
       await _invoke<bool>('snooze', {
@@ -85,5 +91,6 @@ final class AndroidReminders {
     _disposed = true;
     unawaited(_updates?.cancel());
     permission.dispose();
+    exactAlarmsAllowed.dispose();
   }
 }

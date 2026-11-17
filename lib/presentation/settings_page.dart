@@ -103,12 +103,24 @@ class SettingsPage extends StatelessWidget {
                 onChanged: (value) => _save(context, language: value),
               ),
               const Divider(),
-              if (reminders case final reminders?)
+              if (reminders case final reminders?) ...[
                 ListTile(
                   leading: const Icon(Icons.notifications_outlined),
                   title: Text(l10n.notificationSettings),
                   onTap: reminders.openSettings,
                 ),
+                ValueListenableBuilder(
+                  valueListenable: reminders.exactAlarmsAllowed,
+                  builder: (context, allowed, _) => allowed
+                      ? const SizedBox.shrink()
+                      : ListTile(
+                          leading: const Icon(Icons.alarm_outlined),
+                          title: Text(l10n.allowPreciseReminders),
+                          subtitle: Text(l10n.reminderTiming),
+                          onTap: reminders.openExactAlarmSettings,
+                        ),
+                ),
+              ],
               if (backup case final backup?)
                 ListTile(
                   leading: const Icon(Icons.shield_outlined),

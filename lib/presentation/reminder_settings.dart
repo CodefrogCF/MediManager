@@ -180,7 +180,21 @@ class _ReminderEditorState extends State<_ReminderEditor> {
         if (_enabled) ...[
           const SizedBox(height: 12),
           Text(context.l10n.reminderDetails),
-          Text(context.l10n.reminderTiming),
+          ValueListenableBuilder(
+            valueListenable: widget.reminders.exactAlarmsAllowed,
+            builder: (context, allowed, _) => allowed
+                ? const SizedBox.shrink()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(context.l10n.reminderTiming),
+                      TextButton(
+                        onPressed: widget.reminders.openExactAlarmSettings,
+                        child: Text(context.l10n.allowPreciseReminders),
+                      ),
+                    ],
+                  ),
+          ),
           if (widget.previous?.enabled == true)
             ValueListenableBuilder(
               valueListenable: widget.reminders.permission,
